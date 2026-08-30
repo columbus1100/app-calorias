@@ -7,9 +7,6 @@ st.set_page_config(page_title="Calorías AI 📸", page_icon="🥗", layout="cen
 st.title("🥗 Detector de Calorías por Foto")
 st.write("Sube o haz una foto de tu plato para calcular sus calorías al instante.")
 
-# Leemos la clave de forma totalmente segura desde los secretos que acabas de configurar
-API_KEY = st.secrets["GEMINI_API_KEY"]
-
 archivo_subido = st.file_uploader("Elige una foto de comida...", type=["jpg", "jpeg", "png"])
 
 if archivo_subido is not None:
@@ -19,7 +16,8 @@ if archivo_subido is not None:
     if st.button("🔥 Calcular Calorías y Nutrientes", type="primary"):
         with st.spinner("La Inteligencia Artificial está analizando los ingredientes..."):
             try:
-                client = genai.Client(api_key=API_KEY)
+                # Inicializa usando automáticamente la clave de los secretos de Streamlit
+                client = genai.Client()
                 
                 response = client.models.generate_content(
                     model='gemini-2.5-flash',
