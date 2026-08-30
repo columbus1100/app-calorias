@@ -16,8 +16,8 @@ if archivo_subido is not None:
     if st.button("🔥 Calcular Calorías y Nutrientes", type="primary"):
         with st.spinner("La Inteligencia Artificial está analizando los ingredientes..."):
             try:
-                # Inicializa usando automáticamente la clave de los secretos de Streamlit
-                client = genai.Client()
+                # Pasamos la clave directamente aquí sin depender de secretos externos
+                client = genai.Client(api_key="AQ.Ab8RN6LgyvBiaZWIS1-FFqmmmftRTldc3vD0kVFmx9wiisK1Fg")
                 
                 response = client.models.generate_content(
                     model='gemini-2.5-flash',
