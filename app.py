@@ -1,18 +1,17 @@
 import streamlit as st
 import google.generativeai as genai
 from PIL import Image
+import os
 
 st.set_page_config(page_title="Calorías AI 📸", page_icon="🥗", layout="centered")
 
 st.title("🥗 Detector de Calorías por Foto")
 st.write("Sube o haz una foto de tu plato para calcular sus calorías al instante.")
 
-# Configuramos la clave desde los secretos de Streamlit
-try:
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-except Exception:
-    # Si por lo que sea no lee los secretos, pon tu clave entre comillas aquí abajo para probar:
-    genai.configure(api_key="AQUÍ_TU_CLAVE_SI_FALLA")
+# Forzamos la clave para que la librería la detecte correctamente
+api_key = st.secrets["GEMINI_API_KEY"]
+os.environ["GEMINI_API_KEY"] = api_key
+genai.configure(api_key=api_key)
 
 archivo_subido = st.file_uploader("Elige una foto de comida...", type=["jpg", "jpeg", "png"])
 
@@ -23,7 +22,6 @@ if archivo_subido is not None:
     if st.button("🔥 Calcular Calorías y Nutrientes", type="primary"):
         with st.spinner("La Inteligencia Artificial está analizando los ingredientes..."):
             try:
-                # Usamos el modelo estable con la librería clásica
                 model = genai.GenerativeModel('gemini-1.5-flash')
                 
                 response = model.generate_content([
