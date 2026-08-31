@@ -1,36 +1,13 @@
 import streamlit as st
-from google import genai
-from PIL import Image
+import google.generativeai as genai
 
-st.set_page_config(page_title="Calorías AI 📸", page_icon="🥗", layout="centered")
+st.title("Prueba de Clave")
 
-st.title("🥗 Detector de Calorías por Foto")
-st.write("Sube o haz una foto de tu plato para calcular sus calorías al instante.")
+clave = "AQ.Ab8RN6KOhN13ff7i5G8eP3t8mzUnbgmjRxRypVv3uZCsRYLTlw"
 
-# Inicializamos el cliente moderno de Google GenAI con tu clave limpia
-client = genai.Client(api_key="AQ.Ab8RN6IczNKNPrnO3fiUbECUXvVuNUbCTYmfKLrsH99r15yS1w")
-
-archivo_subido = st.file_uploader("Elige una foto de comida...", type=["jpg", "jpeg", "png"])
-
-if archivo_subido is not None:
-    imagen = Image.open(archivo_subido)
-    st.image(imagen, caption="Plato analizado", use_container_width=True)
-    
-    if st.button("🔥 Calcular Calorías y Nutrientes", type="primary"):
-        with st.spinner("La Inteligencia Artificial está analizando los ingredientes..."):
-            try:
-                # Usamos el modelo moderno que pide Google AI Studio
-                response = client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=[
-                        imagen, 
-                        "Actúa como un nutricionista experto. Analiza esta foto de comida, identifica los alimentos, estima los gramos de forma realista y calcula las calorías totales, proteínas, grasas y carbohidratos en formato de lista clara."
-                    ]
-                )
-                
-                st.success("¡Análisis completado con éxito!")
-                st.markdown("### 📊 Desglose Nutricional:")
-                st.markdown(response.text)
-                
-            except Exception as e:
-                st.error(f"Ha ocurrido un error: {e}")
+try:
+    genai.configure(api_key=clave)
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    st.success("¡La librería se ha configurado correctamente!")
+except Exception as e:
+    st.error(f"Error: {e}")
