@@ -19,7 +19,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-
 # --- CONFIGURACIÓN DE BASE DE DATOS LOCAL (PERSISTENCIA) ---
 def init_db():
   conn = sqlite3.connect("historial_nutricional.db", check_same_thread=False)
@@ -39,9 +38,7 @@ def init_db():
   conn.commit()
   conn.close()
 
-
 init_db()
-
 
 def guardar_en_db(fecha, alimento, gramos, cal, prot, grasas, carbs):
   conn = sqlite3.connect("historial_nutricional.db", check_same_thread=False)
@@ -55,7 +52,6 @@ def guardar_en_db(fecha, alimento, gramos, cal, prot, grasas, carbs):
   )
   conn.commit()
   conn.close()
-
 
 def obtener_registros_hoy():
   conn = sqlite3.connect("historial_nutricional.db", check_same_thread=False)
@@ -71,7 +67,6 @@ def obtener_registros_hoy():
   conn.close()
   return datos
 
-
 def limpiar_db_hoy():
   conn = sqlite3.connect("historial_nutricional.db", check_same_thread=False)
   cursor = conn.cursor()
@@ -79,7 +74,6 @@ def limpiar_db_hoy():
   cursor.execute("DELETE FROM registros WHERE fecha = ?", (hoy,))
   conn.commit()
   conn.close()
-
 
 # --- CONFIGURACIÓN DE LA IA ---
 try:
@@ -105,25 +99,21 @@ objetivo = st.sidebar.selectbox(
 st.sidebar.markdown("---")
 st.sidebar.subheader("📜 Resumen Diario (Persistente)")
 
-# Cargar registros desde la base de datos de hoy
 registros_hoy = obtener_registros_hoy()
 total_cal = sum([r[2] for r in registros_hoy])
 total_prot = sum([r[3] for r in registros_hoy])
 total_grasas = sum([r[4] for r in registros_hoy])
 total_carbs = sum([r[5] for r in registros_hoy])
 
-# Mostrar métricas actualizadas
 st.sidebar.metric("🔥 Calorías Totales", f"{total_cal} kcal")
 st.sidebar.metric("🥩 Proteínas", f"{total_prot:.1f} g")
 st.sidebar.metric("🥑 Grasas", f"{total_grasas:.1f} g")
 st.sidebar.metric("🍞 Carbohidratos", f"{total_carbs:.1f} g")
 
-# Botón para reiniciar el día en la BD
 if st.sidebar.button("🗑️ Reiniciar día completo"):
   limpiar_db_hoy()
   st.rerun()
 
-# Exportar informe diario
 if registros_hoy:
   st.sidebar.markdown("---")
   texto_informe = f"INFORME NUTRICIONAL - {datetime.now().strftime('%Y-%m-%d')}\n\n"
@@ -155,21 +145,29 @@ metodo_foto = st.radio(
 archivo_subido = None
 if metodo_foto == "Subir archivo":
   archivo_subido = st.file_uploader(
-      "Elige una foto de comida...",
-      type=["jpg", "jpeg", "png"],
-      key="file_uploader_key",
+      "Elige una foto de comida...", type=["jpg", "jpeg", "png"]
   )
 else:
-  archivo_subido = st.camera_input("Haz una foto al plato", key="camera_key")
+  archivo_subido = st.camera_input("Haz una foto al plato")
 
+# Control de estados y detección de cambio de imagen
 if "analisis_realizado" not in st.session_state:
   st.session_state.analisis_realizado = False
 if "alimento_detectado" not in st.session_state:
   st.session_state.alimento_detectado = ""
 if "peso_estimado" not in st.session_state:
   st.session_state.peso_estimado = 200
+if "ultima_foto" not in st.session_state:
+  st.session_state.ultima_foto = None
 
 if archivo_subido is not None:
+  # Si el usuario sube una foto nueva distinta a la anterior, reseteamos el análisis
+  if archivo_subido != st.session_state.ultima_foto:
+    st.session_state.ultima_foto = archivo_subido
+    st.session_state.analisis_realizado = False
+    st.session_state.alimento_detectado = ""
+    st.rerun()
+
   imagen = Image.open(archivo_subido)
   st.image(imagen, caption="Plato analizado", use_container_width=True)
 
@@ -322,18 +320,15 @@ if archivo_subido is not None:
                 "Aviso: Se calculó correctamente pero hubo un pequeño detalle"
                 f" al sumar automáticamente los macros ({parse_err})."
             )
+
+          if st.button("🔄 Analizar otro plato"):
+            st.session_state.analisis_realizado = False
+            st.session_state.alimento_detectado = ""
+            st.session_state.ultima_foto = None
+            st.rerun()
         else:
           st.error("Error al conectar con la IA para calcular los macros.")
 
-    # Botón para limpiar y analizar otro plato de forma totalmente limpia
-    if st.button("🔄 Analizar otro plato"):
-      st.session_state.analisis_realizado = False
-      st.session_state.alimento_detectado = ""
-      st.session_state.pop("file_uploader_key", None)
-      st.session_state.pop("camera_key", None)
-      st.rerun()
-
-# Mostrar listado persistente en la barra lateral
 if registros_hoy:
   st.sidebar.markdown("---")
   st.sidebar.text("Platos registrados hoy:")
