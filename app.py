@@ -7,7 +7,17 @@ import time
 st.set_page_config(
     page_title="Calorías AI 📸", 
     page_icon="icon.png", 
-    layout="centered"
+    layout="centered",
+    initial_sidebar_state="expanded"
+)
+
+# Forzar icono personalizado para móviles y navegadores
+st.markdown(
+    """
+    <link rel="icon" href="icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
+    """,
+    unsafe_allow_html=True
 )
 
 # --- INYECTAR SOPORTE PARA MÓVIL (PWA) ---
