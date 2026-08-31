@@ -81,9 +81,9 @@ if archivo_subido is not None:
                             f"Responde de forma clara y directa indicando el nombre del plato detectado y los valores nutricionales estimados."
                         )
                         
-                        # Usamos el modelo actual que requiere la API moderna de Google
+                        # Usamos el modelo exacto que pide el error actual
                         response = client.models.generate_content(
-                            model='gemini-2.0-flash',
+                            model='gemini-3.6-flash',
                             contents=[imagen, prompt]
                         )
                         
