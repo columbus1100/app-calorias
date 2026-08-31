@@ -99,11 +99,11 @@ if archivo_subido is not None:
                 resultado_ia = ""
                 ultimo_error = ""
                 
+                # Usamos el modelo correcto exigido por la API: gemini-3.6-flash
                 for intento in range(3):
                     try:
-                        # Usamos el nombre exacto de modelo que indica la API actual
                         respuesta = client.models.generate_content(
-                            model='gemini-2.5-flash',
+                            model='gemini-3.6-flash',
                             contents=[prompt_reconocimiento, imagen]
                         )
                         resultado_ia = respuesta.text.strip()
@@ -111,14 +111,21 @@ if archivo_subido is not None:
                         break
                     except Exception as e:
                         ultimo_error = str(e)
-                        time.sleep(2)
+                        # Si es un error de límite (429), esperamos un poco más
+                        if "429" in ultimo_error:
+                            time.sleep(5)
+                        else:
+                            time.sleep(2)
                 
                 if exito:
                     st.session_state.alimento_detectado = resultado_ia
                     st.session_state.analisis_realizado = True
                     st.rerun()
                 else:
-                    st.error(f"Error de conexión con la IA: {ultimo_error}")
+                    if "429" in ultimo_error:
+                        st.error("⚠️ Límite de peticiones gratuitas alcanzado. Espera un minuto antes de volver a pulsar.")
+                    else:
+                        st.error(f"Error de conexión con la IA: {ultimo_error}")
 
     # PASO 2: Confirmación y corrección manual si la IA falla
     if st.session_state.analisis_realizado:
@@ -149,14 +156,17 @@ if archivo_subido is not None:
                 for intento in range(3):
                     try:
                         res_final = client.models.generate_content(
-                            model='gemini-2.5-flash',
+                            model='gemini-3.6-flash',
                             contents=[prompt_calculo, imagen]
                         )
                         exito_calculo = True
                         break
                     except Exception as e:
                         error_msg = str(e)
-                        time.sleep(2)
+                        if "429" in error_msg:
+                            time.sleep(5)
+                        else:
+                            time.sleep(2)
                 
                 if exito_calculo:
                     st.success("¡Cálculo nutricional completado con éxito!")
