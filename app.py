@@ -77,9 +77,9 @@ if archivo_subido is not None:
                     f"Devuelve los resultados de forma clara y directa."
                 )
                 
-                # Usando el modelo que tu cuenta específica exige
+                # Modelo actual exigido por la API oficial
                 respuesta_ia = client.models.generate_content(
-                    model='gemini-3.6-flash',
+                    model='gemini-3.7-flash',
                     contents=[prompt, imagen]
                 )
                 
