@@ -65,8 +65,8 @@ if archivo_subido is not None:
                 exito = False
                 intentos = 3
                 respuesta_texto = ""
+                error_actual = ""
                 
-                # Bucle de reintentos por si los servidores de Google se saturan (Error 503)
                 for intento in range(intentos):
                     try:
                         client = genai.Client(api_key=api_key)
@@ -81,20 +81,19 @@ if archivo_subido is not None:
                             f"Responde de forma clara y directa indicando el nombre del plato detectado y los valores nutricionales estimados."
                         )
                         
-                        # Usamos gemini-2.5-flash que es sumamente estable
+                        # Usamos el modelo actual que requiere la API moderna de Google
                         response = client.models.generate_content(
-                            model='gemini-2.5-flash',
+                            model='gemini-2.0-flash',
                             contents=[imagen, prompt]
                         )
                         
                         respuesta_texto = response.text
                         exito = True
-                        break # Si sale bien, salimos del bucle
+                        break 
                     except Exception as e:
+                        error_actual = str(e)
                         if intento < intentos - 1:
-                            time.sleep(2) # Espera 2 segundos antes de reintentar
-                        else:
-                            error_actual = str(e)
+                            time.sleep(2)
                 
                 if exito:
                     st.success("¡Análisis de IA completado!")
@@ -105,7 +104,7 @@ if archivo_subido is not None:
                     if resultado_resumen not in st.session_state.historial:
                         st.session_state.historial.append(resultado_resumen)
                 else:
-                    st.error(f"Los servidores están ocupados en este momento. Por favor, espera unos segundos y vuelve a pulsar el botón. (Error: {error_actual})")
+                    st.error(f"Error al conectar con la IA: {error_actual}")
 
 # Mostrar historial
 if st.session_state.historial:
