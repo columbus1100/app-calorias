@@ -99,9 +99,9 @@ if archivo_subido is not None:
                 resultado_ia = ""
                 ultimo_error = ""
                 
-                # Sistema de reintentos automáticos para evitar cortes por saturación (503 / 429)
                 for intento in range(3):
                     try:
+                        # Usamos el nombre exacto de modelo que indica la API actual
                         respuesta = client.models.generate_content(
                             model='gemini-2.5-flash',
                             contents=[prompt_reconocimiento, imagen]
@@ -111,14 +111,14 @@ if archivo_subido is not None:
                         break
                     except Exception as e:
                         ultimo_error = str(e)
-                        time.sleep(3) # Espera 3 segundos antes de reintentar
+                        time.sleep(2)
                 
                 if exito:
                     st.session_state.alimento_detectado = resultado_ia
                     st.session_state.analisis_realizado = True
                     st.rerun()
                 else:
-                    st.error(f"No se pudo conectar con la IA. Detalle del error: {ultimo_error}")
+                    st.error(f"Error de conexión con la IA: {ultimo_error}")
 
     # PASO 2: Confirmación y corrección manual si la IA falla
     if st.session_state.analisis_realizado:
@@ -156,7 +156,7 @@ if archivo_subido is not None:
                         break
                     except Exception as e:
                         error_msg = str(e)
-                        time.sleep(3)
+                        time.sleep(2)
                 
                 if exito_calculo:
                     st.success("¡Cálculo nutricional completado con éxito!")
