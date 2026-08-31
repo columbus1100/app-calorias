@@ -1,6 +1,7 @@
 import streamlit as st
 from PIL import Image
 from google import genai
+import time
 
 # Configuración de la página
 st.set_page_config(
@@ -61,38 +62,50 @@ if archivo_subido is not None:
             st.error("⚠️ Falta configurar la `GEMINI_API_KEY` en los secretos de Streamlit Cloud.")
         else:
             with st.spinner("La IA está examinando los ingredientes y calculando..."):
-                try:
-                    # Inicializar el cliente de la API de Google GenAI
-                    client = genai.Client(api_key=api_key)
-                    
-                    # Prompt para que la IA devuelva los datos analizados
-                    prompt = (
-                        f"Analiza esta imagen de comida. El usuario indica que la porción pesa aproximadamente {gramos_porcion} gramos. "
-                        f"Identifica el plato y calcula de forma realista para esos gramos: "
-                        f"1. Calorías totales (kcal). "
-                        f"2. Gramos de proteínas. "
-                        f"3. Gramos de grasas. "
-                        f"4. Gramos de carbohidratos. "
-                        f"Responde de forma clara y directa indicando el nombre del plato detectado y los valores nutricionales estimados."
-                    )
-                    
-                    # Llamada al modelo Gemini actualizado
-                    response = client.models.generate_content(
-                        model='gemini-3.6-flash',
-                        contents=[imagen, prompt]
-                    )
-                    
+                exito = False
+                intentos = 3
+                respuesta_texto = ""
+                
+                # Bucle de reintentos por si los servidores de Google se saturan (Error 503)
+                for intento in range(intentos):
+                    try:
+                        client = genai.Client(api_key=api_key)
+                        
+                        prompt = (
+                            f"Analiza esta imagen de comida. El usuario indica que la porción pesa aproximadamente {gramos_porcion} gramos. "
+                            f"Identifica el plato y calcula de forma realista para esos gramos: "
+                            f"1. Calorías totales (kcal). "
+                            f"2. Gramos de proteínas. "
+                            f"3. Gramos de grasas. "
+                            f"4. Gramos de carbohidratos. "
+                            f"Responde de forma clara y directa indicando el nombre del plato detectado y los valores nutricionales estimados."
+                        )
+                        
+                        # Usamos gemini-2.5-flash que es sumamente estable
+                        response = client.models.generate_content(
+                            model='gemini-2.5-flash',
+                            contents=[imagen, prompt]
+                        )
+                        
+                        respuesta_texto = response.text
+                        exito = True
+                        break # Si sale bien, salimos del bucle
+                    except Exception as e:
+                        if intento < intentos - 1:
+                            time.sleep(2) # Espera 2 segundos antes de reintentar
+                        else:
+                            error_actual = str(e)
+                
+                if exito:
                     st.success("¡Análisis de IA completado!")
                     st.markdown("### 📊 Resultado del Plato:")
-                    st.write(response.text)
+                    st.write(respuesta_texto)
                     
-                    # Guardar en el historial
                     resultado_resumen = f"{gramos_porcion}g - Analizado por IA"
                     if resultado_resumen not in st.session_state.historial:
                         st.session_state.historial.append(resultado_resumen)
-                        
-                except Exception as e:
-                    st.error(f"Hubo un error al conectar con la IA: {e}")
+                else:
+                    st.error(f"Los servidores están ocupados en este momento. Por favor, espera unos segundos y vuelve a pulsar el botón. (Error: {error_actual})")
 
 # Mostrar historial
 if st.session_state.historial:
