@@ -133,8 +133,9 @@ if archivo_subido is not None:
 
           for intento in range(3):
             try:
+              # AQUÍ ESTÁ EL CAMBIO AL MODELO CORRECTO
               respuesta = client.models.generate_content(
-                  model="gemini-2.5-flash",
+                  model="gemini-3.6-flash",
                   contents=[prompt_reconocimiento, imagen],
               )
               resultado_ia = respuesta.text.strip()
@@ -197,8 +198,9 @@ if archivo_subido is not None:
 
         for intento in range(3):
           try:
+            # AQUÍ TAMBIÉN USAMOS EL MODELO CORRECTO
             res_final = client.models.generate_content(
-                model="gemini-2.5-flash", contents=[prompt_calculo, imagen]
+                model="gemini-3.6-flash", contents=[prompt_calculo, imagen]
             )
             exito_calculo = True
             break
