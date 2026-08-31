@@ -3,12 +3,15 @@ from PIL import Image
 
 st.set_page_config(page_title="Calorías AI 📸", page_icon="🥗", layout="centered")
 
-# --- BARRA LATERAL (MEJORA: Configuración y Historial) ---
-st.sidebar.title("⚙️ Ajustes y Historial")
+# --- BARRA LATERAL (AJUSTES E HISTORIAL) ---
+st.sidebar.title("⚙️ Configuración")
 objetivo = st.sidebar.selectbox(
     "Tu objetivo nutricional:",
     ["Mantener peso", "Definición / Perder grasa", "Volumen / Ganar músculo"]
 )
+
+# Nuevo: Control de tamaño de porción en la barra lateral
+gramos_porcion = st.sidebar.slider("Gramaje estimado de la porción (g):", 50, 500, 100, step=10)
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("📜 Historial de la sesión")
@@ -17,9 +20,14 @@ st.sidebar.subheader("📜 Historial de la sesión")
 if "historial" not in st.session_state:
     st.session_state.historial = []
 
+# Botón para limpiar historial
+if st.sidebar.button("🗑️ Limpiar historial"):
+    st.session_state.historial = []
+    st.rerun()
+
 # --- CUERPO PRINCIPAL ---
 st.title("🥗 Detector de Calorías por Foto")
-st.write("Sube una foto de tu plato para analizarlo al instante según tu objetivo.")
+st.write(f"Analizando bajo el objetivo de: **{objetivo}**")
 
 archivo_subido = st.file_uploader("Elige una foto de comida...", type=["jpg", "jpeg", "png"])
 
@@ -28,19 +36,25 @@ if archivo_subido is not None:
     st.image(imagen, caption="Plato analizado", use_container_width=True)
     
     if st.button("🔥 Analizar Plato", type="primary"):
-        with st.spinner(f"Analizando plato para tu objetivo de '{objetivo}'..."):
+        with st.spinner("Calculando nutrientes según el gramaje..."):
             
-            # Datos simulados del análisis (puedes personalizarlos o conectarlos)
-            alimento = "Pieza de bollería / Croissant (aprox. 80g)"
-            calorias = 310
-            proteinas = 5.2
-            grasas = 16.5
-            carbos = 35.0
+            # Valores base para 100 gramos de un croissant de ejemplo
+            base_calorias = 387
+            base_proteinas = 6.5
+            base_grasas = 20.6
+            base_carbos = 43.8
+            
+            # Recálculo dinámico basado en el slider de gramos
+            factor = gramos_porcion / 100.0
+            calorias = int(base_calorias * factor)
+            proteinas = round(base_proteinas * factor, 1)
+            grasas = round(base_grasas * factor, 1)
+            carbos = round(base_carbos * factor, 1)
             
             st.success("¡Análisis completado con éxito!")
             
-            # MEJORA: Visualización en columnas con métricas de Streamlit
-            st.markdown("### 📊 Desglose Nutricional Estimado:")
+            # Visualización en métricas
+            st.markdown(f"### 📊 Desglose Nutricional ({gramos_porcion}g):")
             
             col1, col2 = st.columns(2)
             with col1:
@@ -50,14 +64,20 @@ if archivo_subido is not None:
                 st.metric(label="🥑 Grasas", value=f"{grasas} g")
                 st.metric(label="🍞 Carbohidratos", value=f"{carbos} g")
             
-            st.info(f"**Alimento detectado:** {alimento}")
-            
+            # Consejo inteligente según el objetivo
+            if "Definición" in objetivo:
+                st.warning("⚠️ **Consejo de Definición:** Este alimento es denso en calorías y grasas. Intenta moderar su consumo si estás en déficit calórico estricto.")
+            elif "Volumen" in objetivo:
+                st. الغذائية: "💪 **Consejo de Volumen:** ¡Excelente opción para sumar calorías limpias o densas de forma rápida a tu dieta!")
+            else:
+                st.info("⚖️ **Consejo de Mantenimiento:** Disfrútalo con moderación dentro de tus calorías diarias totales.")
+
             # Guardar en el historial de la sesión
-            resultado_resumen = f"{alimento} - {calorias} kcal"
+            resultado_resumen = f"{gramos_porcion}g - {calorias} kcal"
             if resultado_resumen not in st.session_state.historial:
                 st.session_state.historial.append(resultado_resumen)
 
-# Mostrar el historial en la barra lateral si hay elementos
+# Mostrar el historial en la barra lateral
 if st.session_state.historial:
     for item in st.session_state.historial:
         st.sidebar.text(f"• {item}")
