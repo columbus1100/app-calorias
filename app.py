@@ -10,7 +10,7 @@ objetivo = st.sidebar.selectbox(
     ["Mantener peso", "Definición / Perder grasa", "Volumen / Ganar músculo"]
 )
 
-# Nuevo: Control de tamaño de porción en la barra lateral
+# Control de tamaño de porción en la barra lateral
 gramos_porcion = st.sidebar.slider("Gramaje estimado de la porción (g):", 50, 500, 100, step=10)
 
 st.sidebar.markdown("---")
@@ -68,7 +68,7 @@ if archivo_subido is not None:
             if "Definición" in objetivo:
                 st.warning("⚠️ **Consejo de Definición:** Este alimento es denso en calorías y grasas. Intenta moderar su consumo si estás en déficit calórico estricto.")
             elif "Volumen" in objetivo:
-                st. الغذائية: "💪 **Consejo de Volumen:** ¡Excelente opción para sumar calorías limpias o densas de forma rápida a tu dieta!")
+                st.info("💪 **Consejo de Volumen:** ¡Excelente opción para sumar calorías limpias o densas de forma rápida a tu dieta!")
             else:
                 st.info("⚖️ **Consejo de Mantenimiento:** Disfrútalo con moderación dentro de tus calorías diarias totales.")
 
