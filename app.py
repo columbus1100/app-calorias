@@ -97,7 +97,10 @@ if archivo_subido is not None:
                 
                 exito = False
                 resultado_ia = ""
-                for intento in range(3):
+                ultimo_error = ""
+                
+                # Intentamos hasta 4 veces con pausa si hay saturación u otro fallo temporal
+                for intento in range(4):
                     try:
                         respuesta = client.models.generate_content(
                             model='gemini-3.6-flash',
@@ -107,16 +110,15 @@ if archivo_subido is not None:
                         exito = True
                         break
                     except Exception as e:
-                        if "503" in str(e) and intento < 2:
-                            time.sleep(2)
-                            continue
+                        ultimo_error = str(e)
+                        time.sleep(2)
                 
                 if exito:
                     st.session_state.alimento_detectado = resultado_ia
                     st.session_state.analisis_realizado = True
                     st.rerun()
                 else:
-                    st.error("Error al conectar con la IA tras varios intentos.")
+                    st.error(f"No se pudo conectar con la IA. Detalle del error: {ultimo_error}")
 
     # PASO 2: Confirmación y corrección manual si la IA falla
     if st.session_state.analisis_realizado:
@@ -129,7 +131,7 @@ if archivo_subido is not None:
             alimento_final = st.text_input("Escribe el nombre real del plato o ingredientes:", value=st.session_state.alimento_detectado)
         
         if st.button("📊 Calcular Calorías y Macros", type="primary"):
-            with st.spinner("Calculando nutrientes detallados (con reintento automático si hay saturación)..."):
+            with st.spinner("Calculando nutrientes detallados..."):
                 prompt_calculo = (
                     f"Analiza este alimento: '{alimento_final}' con un peso exacto de {gramos_porcion} gramos. "
                     f"Proporciona estrictamente los siguientes datos numéricos aproximados para esos {gramos_porcion}g: "
@@ -140,12 +142,11 @@ if archivo_subido is not None:
                     f"Y añade un pequeño desglose o comentario útil."
                 )
                 
-                # Sistema de reintentos automáticos también para el cálculo final
                 exito_calculo = False
                 res_final = None
                 error_msg = ""
                 
-                for intento in range(3):
+                for intento in range(4):
                     try:
                         res_final = client.models.generate_content(
                             model='gemini-3.6-flash',
@@ -155,11 +156,7 @@ if archivo_subido is not None:
                         break
                     except Exception as e:
                         error_msg = str(e)
-                        if "503" in error_msg and intento < 2:
-                            time.sleep(2)
-                            continue
-                        else:
-                            break
+                        time.sleep(2)
                 
                 if exito_calculo:
                     st.success("¡Cálculo nutricional completado con éxito!")
@@ -185,7 +182,7 @@ if archivo_subido is not None:
                         st.session_state.alimento_detectado = ""
                         st.rerun()
                 else:
-                    st.error(f"Error al conectar con la IA tras varios intentos: {error_msg}")
+                    st.error(f"Error al conectar con la IA: {error_msg}")
 
 # Mostrar el listado rápido de comidas en la barra lateral
 if st.session_state.historial:
