@@ -79,7 +79,7 @@ if archivo_subido is not None:
                 
                 # CORREGIDO: Usando el modelo actual que pide la API
                 respuesta_ia = client.models.generate_content(
-                    model='gemini-3.6-flash',
+                    model='gemini-1.5-flash',
                     contents=[prompt, imagen]
                 )
                 
