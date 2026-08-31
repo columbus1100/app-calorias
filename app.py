@@ -99,11 +99,11 @@ if archivo_subido is not None:
                 resultado_ia = ""
                 ultimo_error = ""
                 
-                # Intentamos hasta 4 veces con pausa si hay saturación u otro fallo temporal
-                for intento in range(4):
+                # Sistema de reintentos automáticos para evitar cortes por saturación (503 / 429)
+                for intento in range(3):
                     try:
                         respuesta = client.models.generate_content(
-                            model='gemini-3.6-flash',
+                            model='gemini-2.5-flash',
                             contents=[prompt_reconocimiento, imagen]
                         )
                         resultado_ia = respuesta.text.strip()
@@ -111,7 +111,7 @@ if archivo_subido is not None:
                         break
                     except Exception as e:
                         ultimo_error = str(e)
-                        time.sleep(2)
+                        time.sleep(3) # Espera 3 segundos antes de reintentar
                 
                 if exito:
                     st.session_state.alimento_detectado = resultado_ia
@@ -146,17 +146,17 @@ if archivo_subido is not None:
                 res_final = None
                 error_msg = ""
                 
-                for intento in range(4):
+                for intento in range(3):
                     try:
                         res_final = client.models.generate_content(
-                            model='gemini-3.6-flash',
+                            model='gemini-2.5-flash',
                             contents=[prompt_calculo, imagen]
                         )
                         exito_calculo = True
                         break
                     except Exception as e:
                         error_msg = str(e)
-                        time.sleep(2)
+                        time.sleep(3)
                 
                 if exito_calculo:
                     st.success("¡Cálculo nutricional completado con éxito!")
