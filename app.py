@@ -1,16 +1,15 @@
+from datetime import datetime
+import sqlite3
 import time
 from google import genai
 from PIL import Image
 import streamlit as st
 
-# --- MEJORA 1.0: CONFIGURACIÓN DE PÁGINA ---
+# --- CONFIGURACIÓN DE PÁGINA Y PWA ---
 st.set_page_config(
-    page_title="Calorías AI - Mejora 1.0 📸",
-    page_icon="icon.png",
-    layout="centered",
+    page_title="Calorías AI - Pro 2.0 📸", page_icon="icon.png", layout="centered"
 )
 
-# --- INYECTAR SOPORTE PARA MÓVIL (PWA Y MANIFEST) ---
 st.markdown(
     """
     <link rel="manifest" href="manifest.json">
@@ -20,7 +19,63 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Configurar el cliente de la IA de Google usando los secrets
+# --- CONFIGURACIÓN DE BASE DE DATOS LOCAL (PERSISTENCIA) ---
+def init_db():
+  conn = sqlite3.connect("historial_nutricional.db", check_same_thread=False)
+  cursor = conn.cursor()
+  cursor.execute("""
+        CREATE TABLE IF NOT EXISTS registros (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fecha TEXT,
+            alimento TEXT,
+            gramos INTEGER,
+            calorias INTEGER,
+            proteinas REAL,
+            grasas REAL,
+            carbs REAL
+        )
+    """)
+  conn.commit()
+  conn.close()
+
+init_db()
+
+def guardar_en_db(fecha, alimento, gramos, cal, prot, grasas, carbs):
+  conn = sqlite3.connect("historial_nutricional.db", check_same_thread=False)
+  cursor = conn.cursor()
+  cursor.execute(
+      """
+        INSERT INTO registros (fecha, alimento, gramos, calorias, proteinas, grasas, carbs)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """,
+      (fecha, alimento, gramos, cal, prot, grasas, carbs),
+  )
+  conn.commit()
+  conn.close()
+
+def obtener_registros_hoy():
+  conn = sqlite3.connect("historial_nutricional.db", check_same_thread=False)
+  cursor = conn.cursor()
+  hoy = datetime.now().strftime("%Y-%m-%d")
+  cursor.execute(
+      """
+        SELECT alimento, gramos, calorias, proteinas, grasas, carbs FROM registros WHERE fecha = ?
+    """,
+      (hoy,),
+  )
+  datos = cursor.fetchall()
+  conn.close()
+  return datos
+
+def limpiar_db_hoy():
+  conn = sqlite3.connect("historial_nutricional.db", check_same_thread=False)
+  cursor = conn.cursor()
+  hoy = datetime.now().strftime("%Y-%m-%d")
+  cursor.execute("DELETE FROM registros WHERE fecha = ?", (hoy,))
+  conn.commit()
+  conn.close()
+
+# --- CONFIGURACIÓN DE LA IA ---
 try:
   client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
 except Exception as e:
@@ -29,59 +84,63 @@ except Exception as e:
       " Streamlit."
   )
 
-# --- CONTROL DE TIEMPO (COOLDOWN) PARA EVITAR LÍMITES ---
 if "ultima_vez" not in st.session_state:
   st.session_state.ultima_vez = 0
 
-TIEMPO_ESPERA = 3  # Segundos de espera obligatorios entre peticiones
+TIEMPO_ESPERA = 3
 
-# --- BARRA LATERAL (CONFIGURACIÓN E HISTORIAL ACUMULATIVO) ---
-st.sidebar.title("⚙️ Configuración")
+# --- BARRA LATERAL AVANZADA ---
+st.sidebar.title("⚙️ Configuración Pro")
 objetivo = st.sidebar.selectbox(
     "Tu objetivo nutricional:",
     ["Mantener peso", "Definición / Perder grasa", "Volumen / Ganar músculo"],
 )
 
-# Control de tamaño de porción en la barra lateral
-gramos_porcion = st.sidebar.slider(
-    "Gramaje estimado de la porción (g):", 50, 500, 100, step=10
-)
-
 st.sidebar.markdown("---")
-st.sidebar.subheader("📜 Resumen Diario del Día")
+st.sidebar.subheader("📜 Resumen Diario (Persistente)")
 
-# Inicializar variables acumulativas en session_state
-if "historial" not in st.session_state:
-  st.session_state.historial = []
-if "total_calorias" not in st.session_state:
-  st.session_state.total_calorias = 0
-if "total_proteinas" not in st.session_state:
-  st.session_state.total_proteinas = 0
-if "total_grasas" not in st.session_state:
-  st.session_state.total_grasas = 0
-if "total_carbs" not in st.session_state:
-  st.session_state.total_carbs = 0
+# Cargar registros desde la base de datos de hoy
+registros_hoy = obtener_registros_hoy()
+total_cal = sum([r[2] for r in registros_hoy])
+total_prot = sum([r[3] for r in registros_hoy])
+total_grasas = sum([r[4] for r in registros_hoy])
+total_carbs = sum([r[5] for r in registros_hoy])
 
-# Mostrar métricas acumuladas en la barra lateral
-st.sidebar.metric("🔥 Calorías Totales", f"{st.session_state.total_calorias} kcal")
-st.sidebar.metric("🥩 Proteínas", f"{st.session_state.total_proteinas} g")
-st.sidebar.metric("🥑 Grasas", f"{st.session_state.total_grasas} g")
-st.sidebar.metric("🍞 Carbohidratos", f"{st.session_state.total_carbs} g")
+# Mostrar métricas actualizadas
+st.sidebar.metric("🔥 Calorías Totales", f"{total_cal} kcal")
+st.sidebar.metric("🥩 Proteínas", f"{total_prot:.1f} g")
+st.sidebar.metric("🥑 Grasas", f"{total_grasas:.1f} g")
+st.sidebar.metric("🍞 Carbohidratos", f"{total_carbs:.1f} g")
 
-# Botón para limpiar todo el día
+# Botón para reiniciar el día en la BD
 if st.sidebar.button("🗑️ Reiniciar día completo"):
-  st.session_state.historial = []
-  st.session_state.total_calorias = 0
-  st.session_state.total_proteinas = 0
-  st.session_state.total_grasas = 0
-  st.session_state.total_carbs = 0
+  limpiar_db_hoy()
   st.rerun()
 
+# Exportar informe diario
+if registros_hoy:
+  st.sidebar.markdown("---")
+  texto_informe = f"INFORME NUTRICIONAL - {datetime.now().strftime('%Y-%m-%d')}\n\n"
+  texto_informe += f"Objetivo: {objetivo}\n"
+  texto_informe += f"Calorías Totales: {total_cal} kcal\n"
+  texto_informe += (
+      f"Macros -> Prot: {total_prot:.1f}g | Grasas:"
+      f" {total_grasas:.1f}g | Carbs: {total_carbs:.1f}g\n\nDetalle:\n"
+  )
+  for r in registros_hoy:
+    texto_informe += f"- {r[0]} ({r[1]}g): {r[2]}kcal\n"
+
+  st.sidebar.download_button(
+      label="📥 Descargar Informe Diario",
+      data=texto_informe,
+      file_name=f"informe_nutricional_{datetime.now().strftime('%Y-%m-%d')}.txt",
+      mime="text/plain",
+  )
+
 # --- CUERPO PRINCIPAL ---
-st.title("🥗 Detector de Calorías - Mejora 1.0")
+st.title("🥗 Detector de Calorías Pro - 2.0")
 st.write(f"Analizando bajo el objetivo de: **{objetivo}**")
 
-# Selector para subir foto o usar la cámara
 metodo_foto = st.radio(
     "¿Cómo prefieres añadir la imagen?",
     ("Subir archivo", "Hacer foto con la cámara"),
@@ -95,44 +154,37 @@ if metodo_foto == "Subir archivo":
 else:
   archivo_subido = st.camera_input("Haz una foto al plato")
 
-# Control de estados para el flujo de validación
 if "analisis_realizado" not in st.session_state:
   st.session_state.analisis_realizado = False
 if "alimento_detectado" not in st.session_state:
   st.session_state.alimento_detectado = ""
+if "peso_estimado" not in st.session_state:
+  st.session_state.peso_estimado = 200
 
 if archivo_subido is not None:
   imagen = Image.open(archivo_subido)
   st.image(imagen, caption="Plato analizado", use_container_width=True)
 
-  # PASO 1: Análisis inicial de la IA para reconocer el plato
+  # PASO 1: Identificación y estimación automática de peso por IA
   if not st.session_state.analisis_realizado:
-    if st.button("🔥 Identificar Plato con IA", type="primary"):
+    if st.button("🔥 Identificar Plato y Estimar Peso con IA", type="primary"):
       tiempo_actual = time.time()
-      tiempo_transcurrido = tiempo_actual - st.session_state.ultima_vez
-
-      if tiempo_transcurrido < TIEMPO_ESPERA:
-        segundos_restantes = int(TIEMPO_ESPERA - tiempo_transcurrido)
-        st.warning(
-            f"⏳ ¡Espera {segundos_restantes} segundos antes de hacer otra"
-            " consulta!"
-        )
+      if (tiempo_actual - st.session_state.ultima_vez) < TIEMPO_ESPERA:
+        st.warning("⏳ ¡Espera unos segundos antes de otra consulta!")
       else:
         st.session_state.ultima_vez = time.time()
-        with st.spinner("La IA está examinando la imagen..."):
+        with st.spinner("La IA analiza el plato y calcula el gramaje..."):
           prompt_reconocimiento = (
-              "Identifica brevemente qué plato o alimento principal aparece en"
-              " esta imagen. Responde solo con el nombre del plato de forma"
-              " clara y directa, sin dar valores nutricionales todavía."
+              "Analiza esta imagen de comida. Responde estrictamente con una"
+              " estructura de dos líneas:\nLínea 1: El nombre claro y directo"
+              " del plato.\nLínea 2: Una estimación numérica del peso total en"
+              " gramos (solo el número entero, ej: 350)."
           )
 
           exito = False
           resultado_ia = ""
-          ultimo_error = ""
-
           for intento in range(3):
             try:
-              # Usando el modelo correcto que ya sabemos que funciona
               respuesta = client.models.generate_content(
                   model="gemini-3.6-flash",
                   contents=[prompt_reconocimiento, imagen],
@@ -140,26 +192,40 @@ if archivo_subido is not None:
               resultado_ia = respuesta.text.strip()
               exito = True
               break
-            except Exception as e:
-              ultimo_error = str(e)
+            except Exception:
               time.sleep(2)
 
           if exito:
-            st.session_state.alimento_detectado = resultado_ia
+            lineas = resultado_ia.split("\n")
+            st.session_state.alimento_detectado = lineas[0].replace(
+                "Línea 1:", ""
+            ).strip()
+            # Intentar extraer el número de gramos de la segunda línea
+            try:
+              import re
+
+              match = re.search(
+                  r"\d+", lineas[1] if len(lineas) > 1 else resultado_ia
+              )
+              if match:
+                st.session_state.peso_estimado = int(match.group())
+            except Exception:
+              st.session_state.peso_estimado = 200
+
             st.session_state.analisis_realizado = True
             st.rerun()
           else:
-            st.error(f"Error de conexión con la IA: {ultimo_error}")
+            st.error("Error al conectar con la IA.")
 
-  # PASO 2: Confirmación y corrección manual si la IA falla
+  # PASO 2: Confirmación, edición y cálculo automatizado
   if st.session_state.analisis_realizado:
     st.info(
-        f"🤖 La IA cree que esto es:"
-        f" **{st.session_state.alimento_detectado}**"
+        f"🤖 La IA cree que es: **{st.session_state.alimento_detectado}**"
+        f" (Peso estimado: {st.session_state.peso_estimado}g)"
     )
 
     es_correcto = st.radio(
-        "¿Es correcto este alimento?",
+        "¿Es correcto?",
         ("Sí, es correcto", "No, quiero corregirlo/escribirlo yo"),
         key="radio_correccion",
     )
@@ -167,24 +233,35 @@ if archivo_subido is not None:
     alimento_final = st.session_state.alimento_detectado
     if es_correcto == "No, quiero corregirlo/escribirlo yo":
       alimento_final = st.text_input(
-          "Escribe el nombre real del plato o ingredientes:",
-          value=st.session_state.alimento_detectado,
+          "Escribe el nombre real:", value=st.session_state.alimento_detectado
       )
 
-    if st.button("📊 Calcular Calorías y Macros", type="primary"):
-      with st.spinner("Calculando nutrientes detallados..."):
+    # Permitir afinar el peso estimado por la IA mediante un slider ajustable
+    gramos_porcion = st.slider(
+        "Ajusta el gramaje de la porción (g):",
+        50,
+        800,
+        int(st.session_state.peso_estimado),
+        step=10,
+    )
+
+    if st.button("📊 Calcular y Guardar en el Diario", type="primary"):
+      with st.spinner("Calculando nutrientes exactos..."):
+        # Pedimos formato estructurado estricto para extraer los números informáticamente
         prompt_calculo = (
-            f"Analiza este alimento: '{alimento_final}' con un peso exacto de"
-            f" {gramos_porcion} gramos. Proporciona estrictamente los"
-            f" siguientes datos aproximados para esos {gramos_porcion}g: - Calorías"
-            " totales (kcal) - Proteínas (g) - Grasas (g) - Carbohidratos (g) Y"
-            " añade un pequeño desglose o comentario útil."
+            f"Analiza el alimento '{alimento_final}' con un peso de"
+            f" {gramos_porcion} gramos. Devuelve la respuesta en formato"
+            " estricto separada por comas con este orden exacto (solo los"
+            " números para los valores):"
+            "\nCALORIAS: [número kcal]"
+            "\nPROTEINAS: [número gramos]"
+            "\nGRASAS: [número gramos]"
+            "\nCARBS: [número gramos]"
+            "\nY añade después un breve comentario nutricional útil."
         )
 
         exito_calculo = False
         res_final = None
-        error_msg = ""
-
         for intento in range(3):
           try:
             res_final = client.models.generate_content(
@@ -192,53 +269,69 @@ if archivo_subido is not None:
             )
             exito_calculo = True
             break
-          except Exception as e:
-            error_msg = str(e)
+          except Exception:
             time.sleep(2)
 
         if exito_calculo:
-          st.success("¡Cálculo nutricional completado con éxito!")
+          texto_respuesta = res_final.text
+          st.success("¡Cálculo nutricional completado y guardado!")
           st.markdown(
               f"### 📊 Resultado para {gramos_porcion}g de"
               f" **{alimento_final}**:"
           )
-          st.write(res_final.text)
+          st.write(texto_respuesta)
 
-          # Consejo según objetivo
-          if "Definición" in objetivo:
+          # Extracción inteligente de valores mediante expresiones regulares para la base de datos
+          import re
+          try:
+            cal_match = re.search(
+                r"CALORIAS[:\s]*(\d+)", texto_respuesta, re.IGNORECASE
+            )
+            prot_match = re.search(
+                r"PROTEINAS[:\s]*([\d\.]+)", texto_respuesta, re.IGNORECASE
+            )
+            gras_match = re.search(
+                r"GRASAS[:\s]*([\d\.]+)", texto_respuesta, re.IGNORECASE
+            )
+            carb_match = re.search(
+                r"CARBS[:\s]*([\d\.]+)", texto_respuesta, re.IGNORECASE
+            )
+
+            val_cal = int(cal_match.group(1)) if cal_match else 300
+            val_prot = float(prot_match.group(1)) if prot_match else 15.0
+            val_gras = float(gras_match.group(1)) if gras_match else 10.0
+            val_carb = float(carb_match.group(1)) if carb_match else 30.0
+
+            # Guardar de forma persistente en SQLite
+            hoy = datetime.now().strftime("%Y-%m-%d")
+            guardar_en_db(
+                hoy,
+                alimento_final,
+                gramos_porcion,
+                val_cal,
+                val_prot,
+                val_gras,
+                val_carb,
+            )
+
+          except Exception as parse_err:
             st.warning(
-                "⚠️ **Consejo de Definición:** Controla el total diario para"
-                " mantener tu déficit."
-            )
-          elif "Volumen" in objetivo:
-            st.info(
-                "💪 **Consejo de Volumen:** ¡Excelente aporte para construir"
-                " masa muscular!"
-            )
-          else:
-            st.info(
-                "⚖️ **Consejo de Mantenimiento:** Estupendo plato para tu"
-                " equilibrio diario."
+                "Aviso: Se calculó correctamente pero hubo un pequeño detalle"
+                f" al sumar automáticamente los macros ({parse_err})."
             )
 
-          # Añadir al historial visual y de sesión
-          resultado_resumen = f"{alimento_final} ({gramos_porcion}g)"
-          if resultado_resumen not in st.session_state.historial:
-            st.session_state.historial.append(resultado_resumen)
-
-          # Botón para resetear y hacer otra foto
           if st.button("🔄 Analizar otro plato"):
             st.session_state.analisis_realizado = False
             st.session_state.alimento_detectado = ""
             st.rerun()
         else:
-          st.error(f"Error al conectar con la IA: {error_msg}")
+          st.error("Error al conectar con la IA para calcular los macros.")
 
-# Mostrar el listado rápido de comidas en la barra lateral
-if st.session_state.historial:
+# Mostrar listado persistente en la barra lateral
+if registros_hoy:
   st.sidebar.markdown("---")
   st.sidebar.text("Platos registrados hoy:")
-  for item in st.session_state.historial:
-    st.sidebar.text(f"• {item}")
+  for item in registros_hoy:
+    st.sidebar.text(f"• {item[0]} ({item[1]}g) - {item[2]}kcal")
 else:
-  st.sidebar.text("Sin platos registrados aún")
+  st.sidebar.text("Sin platos registrados aún hoy")
