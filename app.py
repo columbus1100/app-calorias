@@ -96,7 +96,7 @@ if archivo_subido is not None:
                 prompt_reconocimiento = "Identifica brevemente qué plato o alimento aparece en esta imagen. Responde solo con el nombre del plato de forma clara y directa, sin dar valores nutricionales todavía."
                 
                 exito = False
-                resultado_ia = None
+                resultado_ia = ""
                 for intento in range(3):
                     try:
                         respuesta = client.models.generate_content(
@@ -110,13 +110,13 @@ if archivo_subido is not None:
                         if "503" in str(e) and intento < 2:
                             time.sleep(2)
                             continue
-                        else:
-                            resultado_ia = "Plato desconocido"
                 
                 if exito:
                     st.session_state.alimento_detectado = resultado_ia
                     st.session_state.analisis_realizado = True
                     st.rerun()
+                else:
+                    st.error("Error al conectar con la IA tras varios intentos.")
 
     # PASO 2: Confirmación y corrección manual si la IA falla
     if st.session_state.analisis_realizado:
@@ -129,24 +129,40 @@ if archivo_subido is not None:
             alimento_final = st.text_input("Escribe el nombre real del plato o ingredientes:", value=st.session_state.alimento_detectado)
         
         if st.button("📊 Calcular Calorías y Macros", type="primary"):
-            with st.spinner("Calculando nutrientes detallados..."):
+            with st.spinner("Calculando nutrientes detallados (con reintento automático si hay saturación)..."):
                 prompt_calculo = (
                     f"Analiza este alimento: '{alimento_final}' con un peso exacto de {gramos_porcion} gramos. "
                     f"Proporciona estrictamente los siguientes datos numéricos aproximados para esos {gramos_porcion}g: "
-                    f"- Calorías totales (kcal) [Solo el número o valor aproximado] "
+                    f"- Calorías totales (kcal) "
                     f"- Proteínas (g) "
                     f"- Grasas (g) "
                     f"- Carbohidratos (g) "
                     f"Y añade un pequeño desglose o comentario útil."
                 )
                 
-                try:
-                    res_final = client.models.generate_content(
-                        model='gemini-3.6-flash',
-                        contents=[prompt_final := prompt_calculo, imagen]
-                    )
-                    
-                    st.success("¡Cálculo nutricional completado!")
+                # Sistema de reintentos automáticos también para el cálculo final
+                exito_calculo = False
+                res_final = None
+                error_msg = ""
+                
+                for intento in range(3):
+                    try:
+                        res_final = client.models.generate_content(
+                            model='gemini-3.6-flash',
+                            contents=[prompt_calculo, imagen]
+                        )
+                        exito_calculo = True
+                        break
+                    except Exception as e:
+                        error_msg = str(e)
+                        if "503" in error_msg and intento < 2:
+                            time.sleep(2)
+                            continue
+                        else:
+                            break
+                
+                if exito_calculo:
+                    st.success("¡Cálculo nutricional completado con éxito!")
                     st.markdown(f"### 📊 Resultado para {gramos_porcion}g de **{alimento_final}**:")
                     st.write(res_final.text)
                     
@@ -158,17 +174,18 @@ if archivo_subido is not None:
                     else:
                         st.info("⚖️ **Consejo de Mantenimiento:** Estupendo plato para tu equilibrio diario.")
 
-                    # Añadir al historial visual y de sesión (ejemplo simplificado de registro)
-                    st.session_state.historial.append(f"{alimento_final} ({gramos_porcion}g)")
+                    # Añadir al historial visual y de sesión
+                    resultado_resumen = f"{alimento_final} ({gramos_porcion}g)"
+                    if resultado_resumen not in st.session_state.historial:
+                        st.session_state.historial.append(resultado_resumen)
                     
                     # Botón para resetear y hacer otra foto
                     if st.button("🔄 Analizar otro plato"):
                         st.session_state.analisis_realizado = False
                         st.session_state.alimento_detectado = ""
                         st.rerun()
-
-                except Exception as error:
-                    st.error(f"Error al conectar con la IA: {error}")
+                else:
+                    st.error(f"Error al conectar con la IA tras varios intentos: {error_msg}")
 
 # Mostrar el listado rápido de comidas en la barra lateral
 if st.session_state.historial:
