@@ -3,9 +3,9 @@ from PIL import Image
 from google import genai
 import time
 
-# Configuración de la página con tu icono personalizado (icon.png)
+# --- MEJORA 1.0: CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(
-    page_title="Calorías AI 📸", 
+    page_title="Calorías AI - Mejora 1.0 📸", 
     page_icon="icon.png", 
     layout="centered"
 )
@@ -26,7 +26,7 @@ try:
 except Exception as e:
     st.error("⚠️ Configura correctamente la clave 'GEMINI_API_KEY' en los Secrets de Streamlit.")
 
-# --- BARRA LATERAL (AJUSTES E HISTORIAL) ---
+# --- BARRA LATERAL (CONFIGURACIÓN E HISTORIAL ACUMULATIVO) ---
 st.sidebar.title("⚙️ Configuración")
 objetivo = st.sidebar.selectbox(
     "Tu objetivo nutricional:",
@@ -37,19 +37,37 @@ objetivo = st.sidebar.selectbox(
 gramos_porcion = st.sidebar.slider("Gramaje estimado de la porción (g):", 50, 500, 100, step=10)
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("📜 Historial de la sesión")
+st.sidebar.subheader("📜 Resumen Diario del Día")
 
-# Inicializar historial en memoria
+# Inicializar variables acumulativas en session_state
 if "historial" not in st.session_state:
     st.session_state.historial = []
+if "total_calorias" not in st.session_state:
+    st.session_state.total_calorias = 0
+if "total_proteinas" not in st.session_state:
+    st.session_state.total_proteinas = 0
+if "total_grasas" not in st.session_state:
+    st.session_state.total_grasas = 0
+if "total_carbs" not in st.session_state:
+    st.session_state.total_carbs = 0
 
-# Botón para limpiar historial
-if st.sidebar.button("🗑️ Limpiar historial"):
+# Mostrar métricas acumuladas en la barra lateral
+st.sidebar.metric("🔥 Calorías Totales", f"{st.session_state.total_calorias} kcal")
+st.sidebar.metric("🥩 Proteínas", f"{st.session_state.total_proteinas} g")
+st.sidebar.metric("🥑 Grasas", f"{st.session_state.total_grasas} g")
+st.sidebar.metric("🍞 Carbohidratos", f"{st.session_state.total_carbs} g")
+
+# Botón para limpiar todo el día
+if st.sidebar.button("🗑️ Reiniciar día completo"):
     st.session_state.historial = []
+    st.session_state.total_calorias = 0
+    st.session_state.total_proteinas = 0
+    st.session_state.total_grasas = 0
+    st.session_state.total_carbs = 0
     st.rerun()
 
 # --- CUERPO PRINCIPAL ---
-st.title("🥗 Detector de Calorías por Foto")
+st.title("🥗 Detector de Calorías - Mejora 1.0")
 st.write(f"Analizando bajo el objetivo de: **{objetivo}**")
 
 # Selector para subir foto o usar la cámara
@@ -61,67 +79,102 @@ if metodo_foto == "Subir archivo":
 else:
     archivo_subido = st.camera_input("Haz una foto al plato")
 
+# Control de estados para el flujo de validación
+if "analisis_realizado" not in st.session_state:
+    st.session_state.analisis_realizado = False
+if "alimento_detectado" not in st.session_state:
+    st.session_state.alimento_detectado = ""
+
 if archivo_subido is not None:
     imagen = Image.open(archivo_subido)
     st.image(imagen, caption="Plato analizado", use_container_width=True)
     
-    if st.button("🔥 Analizar con IA", type="primary"):
-        with st.spinner("La IA está analizando el plato (si hay mucha demanda, reintentará automáticamente)..."):
-            prompt = (
-                f"Analiza esta imagen de comida. El usuario indica que la porción pesa exactamente {gramos_porcion} gramos. "
-                f"Identifica el alimento y calcula de manera aproximada para esos {gramos_porcion} gramos: "
-                f"1. Calorías totales (kcal). "
-                f"2. Gramos de proteínas. "
-                f"3. Gramos de grasas. "
-                f"4. Gramos de carbohidratos. "
-                f"Devuelve los resultados de forma clara y directa."
-            )
-            
-            # Sistema de reintentos automáticos para evitar el error 503 por saturación
-            exito = False
-            respuesta_ia = None
-            intentos = 3
-            
-            for intento in range(intentos):
+    # PASO 1: Análisis inicial de la IA para reconocer el plato
+    if not st.session_state.analisis_realizado:
+        if st.button("🔥 Identificar Plato con IA", type="primary"):
+            with st.spinner("La IA está examinando la imagen..."):
+                prompt_reconocimiento = "Identifica brevemente qué plato o alimento aparece en esta imagen. Responde solo con el nombre del plato de forma clara y directa, sin dar valores nutricionales todavía."
+                
+                exito = False
+                resultado_ia = None
+                for intento in range(3):
+                    try:
+                        respuesta = client.models.generate_content(
+                            model='gemini-3.6-flash',
+                            contents=[prompt_reconocimiento, imagen]
+                        )
+                        resultado_ia = respuesta.text.strip()
+                        exito = True
+                        break
+                    except Exception as e:
+                        if "503" in str(e) and intento < 2:
+                            time.sleep(2)
+                            continue
+                        else:
+                            resultado_ia = "Plato desconocido"
+                
+                if exito:
+                    st.session_state.alimento_detectado = resultado_ia
+                    st.session_state.analisis_realizado = True
+                    st.rerun()
+
+    # PASO 2: Confirmación y corrección manual si la IA falla
+    if st.session_state.analisis_realizado:
+        st.info(f"🤖 La IA cree que esto es: **{st.session_state.alimento_detectado}**")
+        
+        es_correcto = st.radio("¿Es correcto este alimento?", ("Sí, es correcto", "No, quiero corregirlo/escribirlo yo"), key="radio_correccion")
+        
+        alimento_final = st.session_state.alimento_detectado
+        if es_correcto == "No, quiero corregirlo/escribirlo yo":
+            alimento_final = st.text_input("Escribe el nombre real del plato o ingredientes:", value=st.session_state.alimento_detectado)
+        
+        if st.button("📊 Calcular Calorías y Macros", type="primary"):
+            with st.spinner("Calculando nutrientes detallados..."):
+                prompt_calculo = (
+                    f"Analiza este alimento: '{alimento_final}' con un peso exacto de {gramos_porcion} gramos. "
+                    f"Proporciona estrictamente los siguientes datos numéricos aproximados para esos {gramos_porcion}g: "
+                    f"- Calorías totales (kcal) [Solo el número o valor aproximado] "
+                    f"- Proteínas (g) "
+                    f"- Grasas (g) "
+                    f"- Carbohidratos (g) "
+                    f"Y añade un pequeño desglose o comentario útil."
+                )
+                
                 try:
-                    respuesta_ia = client.models.generate_content(
+                    res_final = client.models.generate_content(
                         model='gemini-3.6-flash',
-                        contents=[prompt, imagen]
+                        contents=[prompt_final := prompt_calculo, imagen]
                     )
-                    exito = True
-                    break
-                except Exception as e:
-                    if "503" in str(e) and intento < intentos - 1:
-                        time.sleep(2) # Espera 2 segundos y vuelve a probar
-                        continue
+                    
+                    st.success("¡Cálculo nutricional completado!")
+                    st.markdown(f"### 📊 Resultado para {gramos_porcion}g de **{alimento_final}**:")
+                    st.write(res_final.text)
+                    
+                    # Consejo según objetivo
+                    if "Definición" in objetivo:
+                        st.warning("⚠️ **Consejo de Definición:** Controla el total diario para mantener tu déficit.")
+                    elif "Volumen" in objetivo:
+                        st.info("💪 **Consejo de Volumen:** ¡Excelente aporte para construir masa muscular!")
                     else:
-                        error_msg = str(e)
+                        st.info("⚖️ **Consejo de Mantenimiento:** Estupendo plato para tu equilibrio diario.")
 
-            if exito:
-                st.success("¡Análisis completado con éxito!")
-                
-                # Mostrar el resultado devuelto por la IA
-                st.markdown(f"### 📊 Resultado para {gramos_porcion}g:")
-                st.write(respuesta_ia.text)
-                
-                # Consejo inteligente según el objetivo
-                if "Definición" in objetivo:
-                    st.warning("⚠️ **Consejo de Definición:** Vigila las calorías totales y prioriza alimentos saciantes dentro de tu déficit.")
-                elif "Volumen" in objetivo:
-                    st.info("💪 **Consejo de Volumen:** ¡Aprovecha para sumar nutrientes de calidad que te ayuden a llegar a marcas!")
-                else:
-                    st.info("⚖️ **Consejo de Mantenimiento:** Mantén el equilibrio adaptando las porciones a tu gasto diario.")
+                    # Añadir al historial visual y de sesión (ejemplo simplificado de registro)
+                    st.session_state.historial.append(f"{alimento_final} ({gramos_porcion}g)")
+                    
+                    # Botón para resetear y hacer otra foto
+                    if st.button("🔄 Analizar otro plato"):
+                        st.session_state.analisis_realizado = False
+                        st.session_state.alimento_detectado = ""
+                        st.rerun()
 
-                # Guardar en el historial de la sesión
-                resultado_resumen = f"{gramos_porcion}g - Analizado por IA"
-                if resultado_resumen not in st.session_state.historial:
-                    st.session_state.historial.append(resultado_resumen)
-            else:
-                st.error(f"Error al conectar con la IA tras varios intentos: {error_msg}")
+                except Exception as error:
+                    st.error(f"Error al conectar con la IA: {error}")
 
-# Mostrar el historial en la barra lateral
+# Mostrar el listado rápido de comidas en la barra lateral
 if st.session_state.historial:
+    st.sidebar.markdown("---")
+    st.sidebar.text("Platos registrados hoy:")
     for item in st.session_state.historial:
         st.sidebar.text(f"• {item}")
 else:
-    st.sidebar.text("Aún no hay registros")
+    st.sidebar.text("Sin platos registrados aún")
