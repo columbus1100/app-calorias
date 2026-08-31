@@ -1,7 +1,13 @@
 import streamlit as st
 from PIL import Image
 
-st.set_page_config(page_title="Calorías AI 📸", page_icon="🥗", layout="centered")
+# Configuración de la página con tu icono personalizado (icon.png)
+st.set_page_config(
+    page_title="Calorías AI 📸", 
+    page_icon="icon.png", 
+    layout="centered"
+)
+
 # --- INYECTAR SOPORTE PARA MÓVIL (PWA) ---
 st.markdown(
     """
@@ -10,6 +16,7 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
 # --- BARRA LATERAL (AJUSTES E HISTORIAL) ---
 st.sidebar.title("⚙️ Configuración")
 objetivo = st.sidebar.selectbox(
@@ -36,7 +43,14 @@ if st.sidebar.button("🗑️ Limpiar historial"):
 st.title("🥗 Detector de Calorías por Foto")
 st.write(f"Analizando bajo el objetivo de: **{objetivo}**")
 
-archivo_subido = st.file_uploader("Elige una foto de comida...", type=["jpg", "jpeg", "png"])
+# Pestañas o selector para subir foto o usar la cámara directamente en el móvil
+metodo_foto = st.radio("¿Cómo prefieres añadir la imagen?", ("Subir archivo", "Hacer foto con la cámara"))
+
+archivo_subido = None
+if metodo_foto == "Subir archivo":
+    archivo_subido = st.file_uploader("Elige una foto de comida...", type=["jpg", "jpeg", "png"])
+else:
+    archivo_subido = st.camera_user("Haz una foto al plato")
 
 if archivo_subido is not None:
     imagen = Image.open(archivo_subido)
@@ -89,4 +103,4 @@ if st.session_state.historial:
     for item in st.session_state.historial:
         st.sidebar.text(f"• {item}")
 else:
-    st.sidebar.text("Aún no hay platos analizados.")
+    st.sidebar.text("Aún no hay registros")
