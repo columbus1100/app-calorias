@@ -1,5 +1,6 @@
 import streamlit as st
 from PIL import Image
+from google import genai
 
 # Configuración de la página con tu icono personalizado (icon.png)
 st.set_page_config(
@@ -17,6 +18,12 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+# Configurar el cliente de la IA de Google usando los secrets
+try:
+    client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+except Exception as e:
+    st.error("⚠️ Configura correctamente la clave 'GEMINI_API_KEY' en los Secrets de Streamlit.")
 
 # --- BARRA LATERAL (AJUSTES E HISTORIAL) ---
 st.sidebar.title("⚙️ Configuración")
@@ -57,47 +64,46 @@ if archivo_subido is not None:
     imagen = Image.open(archivo_subido)
     st.image(imagen, caption="Plato analizado", use_container_width=True)
     
-    if st.button("🔥 Analizar Plato", type="primary"):
-        with st.spinner("Calculando nutrientes según el gramaje..."):
-            
-            # Valores base para 100 gramos de un croissant de ejemplo
-            base_calorias = 387
-            base_proteinas = 6.5
-            base_grasas = 20.6
-            base_carbos = 43.8
-            
-            # Recálculo dinámico basado en el slider de gramos
-            factor = gramos_porcion / 100.0
-            calorias = int(base_calorias * factor)
-            proteinas = round(base_proteinas * factor, 1)
-            grasas = round(base_grasas * factor, 1)
-            carbos = round(base_carbos * factor, 1)
-            
-            st.success("¡Análisis completado con éxito!")
-            
-            # Visualización en métricas
-            st.markdown(f"### 📊 Desglose Nutricional ({gramos_porcion}g):")
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric(label="🔥 Calorías Totales", value=f"{calorias} kcal")
-                st.metric(label="🥩 Proteínas", value=f"{proteinas} g")
-            with col2:
-                st.metric(label="🥑 Grasas", value=f"{grasas} g")
-                st.metric(label="🍞 Carbohidratos", value=f"{carbos} g")
-            
-            # Consejo inteligente según el objetivo
-            if "Definición" in objetivo:
-                st.warning("⚠️ **Consejo de Definición:** Este alimento es denso en calorías y grasas. Intenta moderar su consumo si estás en déficit calórico estricto.")
-            elif "Volumen" in objetivo:
-                st.info("💪 **Consejo de Volumen:** ¡Excelente opción para sumar calorías limpias o densas de forma rápida a tu dieta!")
-            else:
-                st.info("⚖️ **Consejo de Mantenimiento:** Disfrútalo con moderación dentro de tus calorías diarias totales.")
+    if st.button("🔥 Analizar con IA", type="primary"):
+        with st.spinner("La IA está analizando el plato y calculando los nutrientes..."):
+            try:
+                prompt = (
+                    f"Analiza esta imagen de comida. El usuario indica que la porción pesa exactamente {gramos_porcion} gramos. "
+                    f"Identifica el alimento y calcula de manera aproximada para esos {gramos_porcion} gramos: "
+                    f"1. Calorías totales (kcal). "
+                    f"2. Gramos de proteínas. "
+                    f"3. Gramos de grasas. "
+                    f"4. Gramos de carbohidratos. "
+                    f"Devuelve los resultados de forma clara y directa."
+                )
+                
+                # Llamada actualizada con el nuevo SDK oficial
+                respuesta_ia = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=[prompt, imagen]
+                )
+                
+                st.success("¡Análisis completado con éxito!")
+                
+                # Mostrar el resultado devuelto por la IA
+                st.markdown(f"### 📊 Resultado para {gramos_porcion}g:")
+                st.write(respuesta_ia.text)
+                
+                # Consejo inteligente según el objetivo
+                if "Definición" in objetivo:
+                    st.warning("⚠️ **Consejo de Definición:** Vigila las calorías totales y prioriza alimentos saciantes dentro de tu déficit.")
+                elif "Volumen" in objetivo:
+                    st.info("💪 **Consejo de Volumen:** ¡Aprovecha para sumar nutrientes de calidad que te ayuden a llegar a tus marcas!")
+                else:
+                    st.info("⚖️ **Consejo de Mantenimiento:** Mantén el equilibrio adaptando las porciones a tu gasto diario.")
 
-            # Guardar en el historial de la sesión
-            resultado_resumen = f"{gramos_porcion}g - {calorias} kcal"
-            if resultado_resumen not in st.session_state.historial:
-                st.session_state.historial.append(resultado_resumen)
+                # Guardar en el historial de la sesión
+                resultado_resumen = f"{gramos_porcion}g - Analizado por IA"
+                if resultado_resumen not in st.session_state.historial:
+                    st.session_state.historial.append(resultado_resumen)
+
+            except Exception as error:
+                st.error(f"Error al conectar con la IA: {error}")
 
 # Mostrar el historial en la barra lateral
 if st.session_state.historial:
