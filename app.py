@@ -134,7 +134,7 @@ if archivo_subido is not None:
           for intento in range(3):
             try:
               respuesta = client.models.generate_content(
-                  model="gemini-3.6-flash",
+                  model="gemini-2.5-flash",
                   contents=[prompt_reconocimiento, imagen],
               )
               resultado_ia = respuesta.text.strip()
@@ -187,7 +187,7 @@ if archivo_subido is not None:
             f" {gramos_porcion} gramos. Proporciona estrictamente los"
             f" siguientes datos numéricos aproximados para esos"
             f" {gramos_porcion}g: - Calorías totales (kcal) - Proteínas (g) -"
-            " Grasas (g) - Carbohidratos (g) Y añade un pequeño desglose o"
+            f" Grasas (g) - Carbohidratos (g) Y añade un pequeño desglose o"
             " comentario útil."
         )
 
@@ -198,7 +198,7 @@ if archivo_subido is not None:
         for intento in range(3):
           try:
             res_final = client.models.generate_content(
-                model="gemini-3.6-flash", contents=[prompt_calculo, imagen]
+                model="gemini-2.5-flash", contents=[prompt_calculo, imagen]
             )
             exito_calculo = True
             break
