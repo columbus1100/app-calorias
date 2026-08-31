@@ -77,7 +77,7 @@ if archivo_subido is not None:
                     f"Devuelve los resultados de forma clara y directa."
                 )
                 
-                # CORREGIDO: Usando el modelo actual que pide la API
+                # Modelo ultra estable de producción
                 respuesta_ia = client.models.generate_content(
                     model='gemini-2.5-flash',
                     contents=[prompt, imagen]
