@@ -20,14 +20,15 @@ st.markdown(
 )
 
 
-# --- CONFIGURACIÓN DE BASE DE DATOS LOCAL (PERSISTENCIA) ---
+# --- CONFIGURACIÓN DE BASE DE DATOS LOCAL CON USUARIOS ---
 def init_db():
   conn = sqlite3.connect("historial_nutricional.db", check_same_thread=False)
   cursor = conn.cursor()
-  # Creamos la tabla asegurando que tenga todas las columnas necesarias
+  # Añadimos la columna 'usuario' a la tabla
   cursor.execute("""
         CREATE TABLE IF NOT EXISTS registros (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario TEXT,
             fecha TEXT,
             alimento TEXT,
             gramos INTEGER,
@@ -44,40 +45,42 @@ def init_db():
 init_db()
 
 
-def guardar_en_db(fecha, alimento, gramos, cal, prot, grasas, carbs):
+def guardar_en_db(usuario, fecha, alimento, gramos, cal, prot, grasas, carbs):
   conn = sqlite3.connect("historial_nutricional.db", check_same_thread=False)
   cursor = conn.cursor()
   cursor.execute(
       """
-        INSERT INTO registros (fecha, alimento, gramos, calorias, proteinas, grasas, carbs)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO registros (usuario, fecha, alimento, gramos, calorias, proteinas, grasas, carbs)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """,
-      (fecha, alimento, gramos, cal, prot, grasas, carbs),
+      (usuario, fecha, alimento, gramos, cal, prot, grasas, carbs),
   )
   conn.commit()
   conn.close()
 
 
-def obtener_registros_hoy():
+def obtener_registros_hoy(usuario):
   conn = sqlite3.connect("historial_nutricional.db", check_same_thread=False)
   cursor = conn.cursor()
   hoy = datetime.now().strftime("%Y-%m-%d")
   cursor.execute(
       """
-        SELECT alimento, gramos, calorias, proteinas, grasas, carbs FROM registros WHERE fecha = ?
+        SELECT alimento, gramos, calorias, proteinas, grasas, carbs FROM registros WHERE usuario = ? AND fecha = ?
     """,
-      (hoy,),
+      (usuario, hoy),
   )
   datos = cursor.fetchall()
   conn.close()
   return datos
 
 
-def limpiar_db_hoy():
+def limpiar_db_hoy(usuario):
   conn = sqlite3.connect("historial_nutricional.db", check_same_thread=False)
   cursor = conn.cursor()
   hoy = datetime.now().strftime("%Y-%m-%d")
-  cursor.execute("DELETE FROM registros WHERE fecha = ?", (hoy,))
+  cursor.execute(
+      "DELETE FROM registros WHERE usuario = ? AND fecha = ?", (usuario, hoy)
+  )
   conn.commit()
   conn.close()
 
@@ -96,17 +99,23 @@ if "ultima_vez" not in st.session_state:
 
 TIEMPO_ESPERA = 3
 
-# --- BARRA LATERAL AVANZADA ---
+# --- BARRA LATERAL AVANZADA CON GESTIÓN DE PERFILES ---
 st.sidebar.title("⚙️ Configuración Pro")
+
+# Selector de Usuario / Nombre
+usuario_actual = st.sidebar.text_input(
+    "👤 Perfil / Nombre de usuario:", value="Usuario 1"
+)
+
 objetivo = st.sidebar.selectbox(
     "Tu objetivo nutricional:",
     ["Mantener peso", "Definición / Perder grasa", "Volumen / Ganar músculo"],
 )
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("📜 Resumen Diario (Persistente)")
+st.sidebar.subheader(f"📜 Resumen de {usuario_actual}")
 
-registros_hoy = obtener_registros_hoy()
+registros_hoy = obtener_registros_hoy(usuario_actual)
 total_cal = sum([r[2] for r in registros_hoy])
 total_prot = sum([r[3] for r in registros_hoy])
 total_grasas = sum([r[4] for r in registros_hoy])
@@ -117,13 +126,16 @@ st.sidebar.metric("🥩 Proteínas", f"{total_prot:.1f} g")
 st.sidebar.metric("🥑 Grasas", f"{total_grasas:.1f} g")
 st.sidebar.metric("🍞 Carbohidratos", f"{total_carbs:.1f} g")
 
-if st.sidebar.button("🗑️ Reiniciar día completo"):
-  limpiar_db_hoy()
+if st.sidebar.button(f"🗑️ Reiniciar día de {usuario_actual}"):
+  limpiar_db_hoy(usuario_actual)
   st.rerun()
 
 if registros_hoy:
   st.sidebar.markdown("---")
-  texto_informe = f"INFORME NUTRICIONAL - {datetime.now().strftime('%Y-%m-%d')}\n\n"
+  texto_informe = (
+      f"INFORME NUTRICIONAL ({usuario_actual}) -"
+      f" {datetime.now().strftime('%Y-%m-%d')}\n\n"
+  )
   texto_informe += f"Objetivo: {objetivo}\n"
   texto_informe += f"Calorías Totales: {total_cal} kcal\n"
   texto_informe += (
@@ -134,15 +146,20 @@ if registros_hoy:
     texto_informe += f"- {r[0]} ({r[1]}g): {r[2]}kcal\n"
 
   st.sidebar.download_button(
-      label="📥 Descargar Informe Diario",
+      label=f"📥 Descargar Informe de {usuario_actual}",
       data=texto_informe,
-      file_name=f"informe_nutricional_{datetime.now().strftime('%Y-%m-%d')}.txt",
+      file_name=(
+          f"informe_{usuario_actual.lower()}_"
+          f"{datetime.now().strftime('%Y-%m-%d')}.txt"
+      ),
       mime="text/plain",
   )
 
 # --- CUERPO PRINCIPAL ---
 st.title("🥗 Detector de Calorías Pro - 2.0")
-st.write(f"Analizando bajo el objetivo de: **{objetivo}**")
+st.write(
+    f"Usuario activo: **{usuario_actual}** | Objetivo: **{objetivo}**"
+)
 
 metodo_foto = st.radio(
     "¿Cómo prefieres añadir la imagen?",
@@ -280,7 +297,9 @@ if archivo_subido is not None:
 
         if exito_calculo:
           texto_respuesta = res_final.text
-          st.success("¡Cálculo nutricional completado y guardado!")
+          st.success(
+              f"¡Cálculo guardado correctamente para el perfil '{usuario_actual}'!"
+          )
           st.markdown(
               f"### 📊 Resultado para {gramos_porcion}g de"
               f" **{alimento_final}**:"
@@ -308,7 +327,9 @@ if archivo_subido is not None:
             val_carb = float(carb_match.group(1)) if carb_match else 30.0
 
             hoy = datetime.now().strftime("%Y-%m-%d")
+            # Guardamos asociado al nombre del usuario actual
             guardar_en_db(
+                usuario_actual,
                 hoy,
                 alimento_final,
                 gramos_porcion,
@@ -319,10 +340,7 @@ if archivo_subido is not None:
             )
 
           except Exception as parse_err:
-            st.warning(
-                "Aviso: Se calculó correctamente pero hubo un pequeño detalle"
-                f" al sumar automáticamente los macros ({parse_err})."
-            )
+            st.warning(f"Aviso al extraer macros: {parse_err}")
 
           if st.button("🔄 Analizar otro plato"):
             st.session_state.analisis_realizado = False
@@ -334,8 +352,8 @@ if archivo_subido is not None:
 
 if registros_hoy:
   st.sidebar.markdown("---")
-  st.sidebar.text("Platos registrados hoy:")
+  st.sidebar.text(f"Platos de {usuario_actual} hoy:")
   for item in registros_hoy:
     st.sidebar.text(f"• {item[0]} ({item[1]}g) - {item[2]}kcal")
 else:
-  st.sidebar.text("Sin platos registrados aún hoy")
+  st.sidebar.text(f"Sin platos registrados hoy para {usuario_actual}")
