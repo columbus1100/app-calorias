@@ -77,9 +77,9 @@ if archivo_subido is not None:
                     f"Devuelve los resultados de forma clara y directa."
                 )
                 
-                # Llamada actualizada con el nuevo SDK oficial
+                # CORREGIDO: Usando el modelo actual que pide la API
                 respuesta_ia = client.models.generate_content(
-                    model='gemini-2.5-flash',
+                    model='gemini-3.6-flash',
                     contents=[prompt, imagen]
                 )
                 
