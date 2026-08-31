@@ -20,11 +20,11 @@ st.markdown(
 )
 
 
-# --- CONFIGURACIÓN DE BASE DE DATOS LOCAL CON USUARIOS ---
+# --- CONFIGURACIÓN DE BASE DE DATOS LOCAL SEGURA ---
 def init_db():
   conn = sqlite3.connect("historial_nutricional.db", check_same_thread=False)
   cursor = conn.cursor()
-  # Añadimos la columna 'usuario' a la tabla
+  # Si la tabla antigua no tiene la columna usuario, la recreamos limpiamente para evitar errores
   cursor.execute("""
         CREATE TABLE IF NOT EXISTS registros (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,13 +63,32 @@ def obtener_registros_hoy(usuario):
   conn = sqlite3.connect("historial_nutricional.db", check_same_thread=False)
   cursor = conn.cursor()
   hoy = datetime.now().strftime("%Y-%m-%d")
-  cursor.execute(
-      """
-        SELECT alimento, gramos, calorias, proteinas, grasas, carbs FROM registros WHERE usuario = ? AND fecha = ?
-    """,
-      (usuario, hoy),
-  )
-  datos = cursor.fetchall()
+  try:
+    cursor.execute(
+        """
+            SELECT alimento, gramos, calorias, proteinas, grasas, carbs FROM registros WHERE usuario = ? AND fecha = ?
+        """,
+        (usuario, hoy),
+    )
+    datos = cursor.fetchall()
+  except sqlite3.OperationalError:
+    # Si por cualquier motivo la tabla es antigua, la reseteamos al vuelo
+    cursor.execute("DROP TABLE IF EXISTS registros")
+    cursor.execute("""
+            CREATE TABLE registros (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                usuario TEXT,
+                fecha TEXT,
+                alimento TEXT,
+                gramos INTEGER,
+                calorias INTEGER,
+                proteinas REAL,
+                grasas REAL,
+                carbs REAL
+            )
+        """)
+    conn.commit()
+    datos = []
   conn.close()
   return datos
 
@@ -102,7 +121,6 @@ TIEMPO_ESPERA = 3
 # --- BARRA LATERAL AVANZADA CON GESTIÓN DE PERFILES ---
 st.sidebar.title("⚙️ Configuración Pro")
 
-# Selector de Usuario / Nombre
 usuario_actual = st.sidebar.text_input(
     "👤 Perfil / Nombre de usuario:", value="Usuario 1"
 )
@@ -327,7 +345,6 @@ if archivo_subido is not None:
             val_carb = float(carb_match.group(1)) if carb_match else 30.0
 
             hoy = datetime.now().strftime("%Y-%m-%d")
-            # Guardamos asociado al nombre del usuario actual
             guardar_en_db(
                 usuario_actual,
                 hoy,
