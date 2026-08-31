@@ -19,7 +19,6 @@ st.markdown(
 )
 
 # --- CONFIGURACIÓN DE LA API DE GEMINI ---
-# Asegúrate de guardar tu API key en los Secrets de Streamlit como: GEMINI_API_KEY
 api_key = st.secrets.get("GEMINI_API_KEY")
 
 # --- BARRA LATERAL (AJUSTES E HISTORIAL) ---
@@ -77,9 +76,9 @@ if archivo_subido is not None:
                         f"Responde de forma clara y directa indicando el nombre del plato detectado y los valores nutricionales estimados."
                     )
                     
-                    # Llamada al modelo Gemini con la imagen y el texto
+                    # Llamada al modelo Gemini actualizado
                     response = client.models.generate_content(
-                        model='gemini-2.5-flash',
+                        model='gemini-3.6-flash',
                         contents=[imagen, prompt]
                     )
                     
