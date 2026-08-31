@@ -19,6 +19,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
 # --- CONFIGURACIÓN DE BASE DE DATOS LOCAL (PERSISTENCIA) ---
 def init_db():
   conn = sqlite3.connect("historial_nutricional.db", check_same_thread=False)
@@ -38,7 +39,9 @@ def init_db():
   conn.commit()
   conn.close()
 
+
 init_db()
+
 
 def guardar_en_db(fecha, alimento, gramos, cal, prot, grasas, carbs):
   conn = sqlite3.connect("historial_nutricional.db", check_same_thread=False)
@@ -52,6 +55,7 @@ def guardar_en_db(fecha, alimento, gramos, cal, prot, grasas, carbs):
   )
   conn.commit()
   conn.close()
+
 
 def obtener_registros_hoy():
   conn = sqlite3.connect("historial_nutricional.db", check_same_thread=False)
@@ -67,6 +71,7 @@ def obtener_registros_hoy():
   conn.close()
   return datos
 
+
 def limpiar_db_hoy():
   conn = sqlite3.connect("historial_nutricional.db", check_same_thread=False)
   cursor = conn.cursor()
@@ -74,6 +79,7 @@ def limpiar_db_hoy():
   cursor.execute("DELETE FROM registros WHERE fecha = ?", (hoy,))
   conn.commit()
   conn.close()
+
 
 # --- CONFIGURACIÓN DE LA IA ---
 try:
@@ -149,10 +155,12 @@ metodo_foto = st.radio(
 archivo_subido = None
 if metodo_foto == "Subir archivo":
   archivo_subido = st.file_uploader(
-      "Elige una foto de comida...", type=["jpg", "jpeg", "png"]
+      "Elige una foto de comida...",
+      type=["jpg", "jpeg", "png"],
+      key="file_uploader_key",
   )
 else:
-  archivo_subido = st.camera_input("Haz una foto al plato")
+  archivo_subido = st.camera_input("Haz una foto al plato", key="camera_key")
 
 if "analisis_realizado" not in st.session_state:
   st.session_state.analisis_realizado = False
@@ -200,7 +208,6 @@ if archivo_subido is not None:
             st.session_state.alimento_detectado = lineas[0].replace(
                 "Línea 1:", ""
             ).strip()
-            # Intentar extraer el número de gramos de la segunda línea
             try:
               import re
 
@@ -236,7 +243,6 @@ if archivo_subido is not None:
           "Escribe el nombre real:", value=st.session_state.alimento_detectado
       )
 
-    # Permitir afinar el peso estimado por la IA mediante un slider ajustable
     gramos_porcion = st.slider(
         "Ajusta el gramaje de la porción (g):",
         50,
@@ -247,7 +253,6 @@ if archivo_subido is not None:
 
     if st.button("📊 Calcular y Guardar en el Diario", type="primary"):
       with st.spinner("Calculando nutrientes exactos..."):
-        # Pedimos formato estructurado estricto para extraer los números informáticamente
         prompt_calculo = (
             f"Analiza el alimento '{alimento_final}' con un peso de"
             f" {gramos_porcion} gramos. Devuelve la respuesta en formato"
@@ -281,7 +286,6 @@ if archivo_subido is not None:
           )
           st.write(texto_respuesta)
 
-          # Extracción inteligente de valores mediante expresiones regulares para la base de datos
           import re
           try:
             cal_match = re.search(
@@ -302,7 +306,6 @@ if archivo_subido is not None:
             val_gras = float(gras_match.group(1)) if gras_match else 10.0
             val_carb = float(carb_match.group(1)) if carb_match else 30.0
 
-            # Guardar de forma persistente en SQLite
             hoy = datetime.now().strftime("%Y-%m-%d")
             guardar_en_db(
                 hoy,
@@ -319,13 +322,16 @@ if archivo_subido is not None:
                 "Aviso: Se calculó correctamente pero hubo un pequeño detalle"
                 f" al sumar automáticamente los macros ({parse_err})."
             )
-
-          if st.button("🔄 Analizar otro plato"):
-            st.session_state.analisis_realizado = False
-            st.session_state.alimento_detectado = ""
-            st.rerun()
         else:
           st.error("Error al conectar con la IA para calcular los macros.")
+
+    # Botón para limpiar y analizar otro plato de forma totalmente limpia
+    if st.button("🔄 Analizar otro plato"):
+      st.session_state.analisis_realizado = False
+      st.session_state.alimento_detectado = ""
+      st.session_state.pop("file_uploader_key", None)
+      st.session_state.pop("camera_key", None)
+      st.rerun()
 
 # Mostrar listado persistente en la barra lateral
 if registros_hoy:
