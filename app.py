@@ -43,14 +43,14 @@ if st.sidebar.button("🗑️ Limpiar historial"):
 st.title("🥗 Detector de Calorías por Foto")
 st.write(f"Analizando bajo el objetivo de: **{objetivo}**")
 
-# Pestañas o selector para subir foto o usar la cámara directamente en el móvil
+# Selector para subir foto o usar la cámara (corregido con camera_input)
 metodo_foto = st.radio("¿Cómo prefieres añadir la imagen?", ("Subir archivo", "Hacer foto con la cámara"))
 
 archivo_subido = None
 if metodo_foto == "Subir archivo":
     archivo_subido = st.file_uploader("Elige una foto de comida...", type=["jpg", "jpeg", "png"])
 else:
-    archivo_subido = st.camera_user("Haz una foto al plato")
+    archivo_subido = st.camera_input("Haz una foto al plato")
 
 if archivo_subido is not None:
     imagen = Image.open(archivo_subido)
