@@ -8,7 +8,7 @@ st.title("🥗 Detector de Calorías por Foto")
 st.write("Sube o haz una foto de tu plato para calcular sus calorías al instante.")
 
 # Configuramos la clave que ya sabemos que funciona
-genai.configure(api_key="AQ.Ab8RN6KOhN13ff7i5G8eP3t8mzUnbgmjRxRypVv3uZCsRYLTlw")
+genai.configure(api_key="AQ.Ab8RN6Lztnm_ZKF5stmztJNUn3VQnAGHbRO7W-ISURujXDGhRQ")
 
 archivo_subido = st.file_uploader("Elige una foto de comida...", type=["jpg", "jpeg", "png"])
 
