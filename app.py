@@ -18,9 +18,9 @@ if archivo_subido is not None:
   if st.button("Hacer prueba directa"):
     with st.spinner("Conectando con Gemini..."):
       try:
-        # Llamada directa y simple usando el modelo actual
+        # Usamos el modelo correcto que pide Google
         respuesta = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.6-flash",
             contents=["¿Qué ves en esta imagen?", imagen],
         )
         st.success("¡Conexión exitosa!")
