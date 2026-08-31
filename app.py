@@ -2,7 +2,14 @@ import streamlit as st
 from PIL import Image
 
 st.set_page_config(page_title="Calorías AI 📸", page_icon="🥗", layout="centered")
-
+# --- INYECTAR SOPORTE PARA MÓVIL (PWA) ---
+st.markdown(
+    """
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0083B8">
+    """,
+    unsafe_allow_html=True
+)
 # --- BARRA LATERAL (AJUSTES E HISTORIAL) ---
 st.sidebar.title("⚙️ Configuración")
 objetivo = st.sidebar.selectbox(
