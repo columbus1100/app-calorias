@@ -1,6 +1,7 @@
 import streamlit as st
 from PIL import Image
 from google import genai
+import time
 
 # Configuración de la página con tu icono personalizado (icon.png)
 st.set_page_config(
@@ -65,24 +66,38 @@ if archivo_subido is not None:
     st.image(imagen, caption="Plato analizado", use_container_width=True)
     
     if st.button("🔥 Analizar con IA", type="primary"):
-        with st.spinner("La IA está analizando el plato y calculando los nutrientes..."):
-            try:
-                prompt = (
-                    f"Analiza esta imagen de comida. El usuario indica que la porción pesa exactamente {gramos_porcion} gramos. "
-                    f"Identifica el alimento y calcula de manera aproximada para esos {gramos_porcion} gramos: "
-                    f"1. Calorías totales (kcal). "
-                    f"2. Gramos de proteínas. "
-                    f"3. Gramos de grasas. "
-                    f"4. Gramos de carbohidratos. "
-                    f"Devuelve los resultados de forma clara y directa."
-                )
-                
-                # Modelo actual exigido por la API oficial
-                respuesta_ia = client.models.generate_content(
-                    model='gemini-3.7-flash',
-                    contents=[prompt, imagen]
-                )
-                
+        with st.spinner("La IA está analizando el plato (si hay mucha demanda, reintentará automáticamente)..."):
+            prompt = (
+                f"Analiza esta imagen de comida. El usuario indica que la porción pesa exactamente {gramos_porcion} gramos. "
+                f"Identifica el alimento y calcula de manera aproximada para esos {gramos_porcion} gramos: "
+                f"1. Calorías totales (kcal). "
+                f"2. Gramos de proteínas. "
+                f"3. Gramos de grasas. "
+                f"4. Gramos de carbohidratos. "
+                f"Devuelve los resultados de forma clara y directa."
+            )
+            
+            # Sistema de reintentos automáticos para evitar el error 503 por saturación
+            exito = False
+            respuesta_ia = None
+            intentos = 3
+            
+            for intento in range(intentos):
+                try:
+                    respuesta_ia = client.models.generate_content(
+                        model='gemini-3.7-flash',
+                        contents=[prompt, imagen]
+                    )
+                    exito = True
+                    break
+                except Exception as e:
+                    if "503" in str(e) and intento < intentos - 1:
+                        time.sleep(2) # Espera 2 segundos y vuelve a probar
+                        continue
+                    else:
+                        error_msg = str(e)
+
+            if exito:
                 st.success("¡Análisis completado con éxito!")
                 
                 # Mostrar el resultado devuelto por la IA
@@ -93,7 +108,7 @@ if archivo_subido is not None:
                 if "Definición" in objetivo:
                     st.warning("⚠️ **Consejo de Definición:** Vigila las calorías totales y prioriza alimentos saciantes dentro de tu déficit.")
                 elif "Volumen" in objetivo:
-                    st.info("💪 **Consejo de Volumen:** ¡Aprovecha para sumar nutrientes de calidad que te ayuden a llegar a tus marcas!")
+                    st.info("💪 **Consejo de Volumen:** ¡Aprovecha para sumar nutrientes de calidad que te ayuden a llegar a marcas!")
                 else:
                     st.info("⚖️ **Consejo de Mantenimiento:** Mantén el equilibrio adaptando las porciones a tu gasto diario.")
 
@@ -101,9 +116,8 @@ if archivo_subido is not None:
                 resultado_resumen = f"{gramos_porcion}g - Analizado por IA"
                 if resultado_resumen not in st.session_state.historial:
                     st.session_state.historial.append(resultado_resumen)
-
-            except Exception as error:
-                st.error(f"Error al conectar con la IA: {error}")
+            else:
+                st.error(f"Error al conectar con la IA tras varios intentos: {error_msg}")
 
 # Mostrar el historial en la barra lateral
 if st.session_state.historial:
