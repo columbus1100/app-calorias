@@ -3,7 +3,7 @@ import os
 import sqlite3
 import time
 from google import genai
-from PIL import Image
+from PIL import Image, ImageOps
 import streamlit as st
 
 # --- CONFIGURACIÓN DE PÁGINA Y PWA ---
@@ -45,6 +45,26 @@ def obtener_cliente_ia():
   active_key = keys[0]
   os.environ["GEMINI_API_KEY"] = active_key
   return genai.Client(api_key=active_key)
+
+
+# --- PROCESADOR ROBUSTO DE IMÁGENES DE MÓVIL ---
+def preparar_imagen_movil(archivo):
+  try:
+    img = Image.open(archivo)
+    # Corregir rotación automática de cámaras de móvil (EXIF)
+    img = ImageOps.exif_transpose(img)
+    # Convertir a RGB si viene en RGBA o CMYK
+    if img.mode != "RGB":
+      img = img.convert("RGB")
+    # Redimensionar si es excesivamente grande (máximo 1280px por seguridad)
+    img.thumbnail((1280, 1280))
+    return img
+  except Exception as e:
+    st.error(
+        "❌ Error al procesar la foto del móvil. Asegúrate de que no sea formato"
+        f" HEIC o cámbiala a JPG/PNG. Detalles: {e}"
+    )
+    return None
 
 
 # --- CONFIGURACIÓN DE BASE DE DATOS LOCAL SEGURA ---
@@ -239,12 +259,13 @@ with pestana_analisis:
 
   if metodo_foto == "Subir archivo":
     archivo_subido = st.file_uploader(
-        "Selecciona una imagen...", type=["jpg", "jpeg", "png"], key=current_key
+        "Selecciona una imagen...",
+        type=["jpg", "jpeg", "png", "webp"],
+        key=current_key,
     )
   else:
     archivo_subido = st.camera_input("Toma una foto", key=current_key)
 
-  # Detectar si se ha cambiado de archivo para resetear estados al instante
   if archivo_subido is not None:
     nombre_actual = getattr(archivo_subido, "name", "camara_foto")
     if nombre_actual != st.session_state.ultima_foto_nombre:
@@ -258,16 +279,13 @@ with pestana_analisis:
     col_img, col_datos = st.columns([1, 1], gap="large")
 
     with col_img:
-      try:
-        imagen = Image.open(archivo_subido)
+      imagen = preparar_imagen_movil(archivo_subido)
+      if imagen:
         st.image(
             imagen,
             caption="Imagen del plato analizado",
             use_container_width=True,
         )
-      except Exception as img_err:
-        st.error(f"Error al abrir la imagen: {img_err}")
-        imagen = None
 
     with col_datos:
       if imagen and not st.session_state.analisis_realizado:
