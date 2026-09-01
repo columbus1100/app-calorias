@@ -24,7 +24,6 @@ st.markdown(
 def init_db():
   conn = sqlite3.connect("historial_nutricional.db", check_same_thread=False)
   cursor = conn.cursor()
-  # Si la tabla antigua no tiene la columna usuario, la recreamos limpiamente para evitar errores
   cursor.execute("""
         CREATE TABLE IF NOT EXISTS registros (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,7 +71,6 @@ def obtener_registros_hoy(usuario):
     )
     datos = cursor.fetchall()
   except sqlite3.OperationalError:
-    # Si por cualquier motivo la tabla es antigua, la reseteamos al vuelo
     cursor.execute("DROP TABLE IF EXISTS registros")
     cursor.execute("""
             CREATE TABLE registros (
@@ -184,13 +182,21 @@ metodo_foto = st.radio(
     ("Subir archivo", "Hacer foto con la cámara"),
 )
 
+# Control de clave dinámica para forzar la limpieza del widget de imagen
+if "form_key_counter" not in st.session_state:
+  st.session_state.form_key_counter = 0
+
 archivo_subido = None
 if metodo_foto == "Subir archivo":
   archivo_subido = st.file_uploader(
-      "Elige una foto de comida...", type=["jpg", "jpeg", "png"]
+      "Elige una foto de comida...",
+      type=["jpg", "jpeg", "png"],
+      key=f"uploader_{st.session_state.form_key_counter}",
   )
 else:
-  archivo_subido = st.camera_input("Haz una foto al plato")
+  archivo_subido = st.camera_input(
+      "Haz una foto al plato", key=f"camera_{st.session_state.form_key_counter}"
+  )
 
 if "analisis_realizado" not in st.session_state:
   st.session_state.analisis_realizado = False
@@ -359,10 +365,14 @@ if archivo_subido is not None:
           except Exception as parse_err:
             st.warning(f"Aviso al extraer macros: {parse_err}")
 
+          # Botón de limpiar y analizar otro plato de forma totalmente automática
           if st.button("🔄 Analizar otro plato"):
             st.session_state.analisis_realizado = False
             st.session_state.alimento_detectado = ""
             st.session_state.ultima_foto = None
+            st.session_state.form_key_counter += (
+                1  # Cambia la clave del selector para vaciarlo solo
+            )
             st.rerun()
         else:
           st.error("Error al conectar con la IA para calcular los macros.")
