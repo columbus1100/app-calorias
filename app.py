@@ -182,7 +182,6 @@ metodo_foto = st.radio(
     ("Subir archivo", "Hacer foto con la cámara"),
 )
 
-# Control de clave dinámica para forzar la limpieza del widget de imagen
 if "form_key_counter" not in st.session_state:
   st.session_state.form_key_counter = 0
 
@@ -244,7 +243,7 @@ if archivo_subido is not None:
               exito = True
               break
             except Exception:
-              time.sleep(2)
+              time.sleep(3)  # Espera 3 segundos antes de reintentar
 
           if exito:
             lineas = resultado_ia.split("\n")
@@ -265,7 +264,10 @@ if archivo_subido is not None:
             st.session_state.analisis_realizado = True
             st.rerun()
           else:
-            st.error("Error al conectar con la IA.")
+            st.error(
+                "Error de conexión con la IA. Comprueba tu red o vuelve a"
+                " intentarlo."
+            )
 
   if st.session_state.analisis_realizado:
     st.info(
@@ -317,7 +319,7 @@ if archivo_subido is not None:
             exito_calculo = True
             break
           except Exception:
-            time.sleep(2)
+            time.sleep(3)
 
         if exito_calculo:
           texto_respuesta = res_final.text
@@ -365,17 +367,17 @@ if archivo_subido is not None:
           except Exception as parse_err:
             st.warning(f"Aviso al extraer macros: {parse_err}")
 
-          # Botón de limpiar y analizar otro plato de forma totalmente automática
           if st.button("🔄 Analizar otro plato"):
             st.session_state.analisis_realizado = False
             st.session_state.alimento_detectado = ""
             st.session_state.ultima_foto = None
-            st.session_state.form_key_counter += (
-                1  # Cambia la clave del selector para vaciarlo solo
-            )
+            st.session_state.form_key_counter += 1
             st.rerun()
         else:
-          st.error("Error al conectar con la IA para calcular los macros.")
+          st.error(
+              "Error al conectar con la IA para calcular los macros tras varios"
+              " intentos."
+          )
 
 if registros_hoy:
   st.sidebar.markdown("---")
