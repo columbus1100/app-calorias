@@ -30,9 +30,8 @@ st.markdown(
 )
 
 
-# --- GESTOR INTELIGENTE DE CLAVES (COMPATIBLE CON AQ.) ---
+# --- GESTOR INTELIGENTE DE CLAVES ---
 def obtener_cliente_ia():
-  """Carga las claves desde los secrets y rota de forma segura."""
   raw_keys = st.secrets.get("GEMINI_API_KEY", "")
   keys = [k.strip() for k in raw_keys.split(",") if k.strip()]
 
@@ -48,15 +47,12 @@ def obtener_cliente_ia():
 
   st.session_state.key_index = st.session_state.key_index % len(keys)
   active_key = keys[st.session_state.key_index]
-
-  # Forzar la variable de entorno para que el SDK reconozca las claves AQ. sin error OAuth
   os.environ["GEMINI_API_KEY"] = active_key
 
   return genai.Client(api_key=active_key)
 
 
 def rotar_siguiente_clave():
-  """Cambia a la siguiente clave disponible en la lista de secretos."""
   raw_keys = st.secrets.get("GEMINI_API_KEY", "")
   keys = [k.strip() for k in raw_keys.split(",") if k.strip()]
   if len(keys) > 1:
@@ -318,7 +314,7 @@ with pestana_analisis:
                   break
                 try:
                   respuesta = client.models.generate_content(
-                      model="gemini-2.5-flash",
+                      model="gemini-3.6-flash",
                       contents=[prompt_reconocimiento, imagen],
                   )
                   resultado_ia = respuesta.text.strip()
@@ -428,7 +424,7 @@ with pestana_analisis:
                 break
               try:
                 res_final = client.models.generate_content(
-                    model="gemini-2.5-flash", contents=[prompt_calculo, imagen]
+                    model="gemini-3.6-flash", contents=[prompt_calculo, imagen]
                 )
                 exito_calculo = True
                 break
