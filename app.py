@@ -7,7 +7,7 @@ import streamlit as st
 
 # --- CONFIGURACIÓN DE PÁGINA Y PWA ---
 st.set_page_config(
-    page_title="Calorías AI - Pro 3.0 📸", page_icon="icon.png", layout="wide"
+    page_title="Calorías AI - Pro 2.0 📸", page_icon="icon.png", layout="wide"
 )
 
 st.markdown(
@@ -311,10 +311,16 @@ with pestana_analisis:
                 st.session_state.analisis_realizado = True
                 st.rerun()
               else:
-                st.error(
-                    "❌ Error detallado de la IA:"
-                    f" {ultimo_error[:250]}..."
-                )
+                if "429" in ultimo_error or "RESOURCE_EXHAUSTED" in ultimo_error:
+                  st.warning(
+                      "⏳ Has hecho demasiadas fotos seguidas, espera dos"
+                      " minutillos o tres antes de volver a intentarlo."
+                  )
+                else:
+                  st.error(
+                      "❌ Error detallado de la IA:"
+                      f" {ultimo_error[:250]}..."
+                  )
 
       if st.session_state.analisis_realizado:
         st.success(
@@ -426,10 +432,16 @@ with pestana_analisis:
                 st.session_state.form_key_counter += 1
                 st.rerun()
             else:
-              st.error(
-                  "❌ Error detallado al calcular macros:"
-                  f" {error_calc[:250]}..."
-              )
+              if "429" in error_calc or "RESOURCE_EXHAUSTED" in error_calc:
+                st.warning(
+                    "⏳ Has hecho demasiadas fotos seguidas, espera dos"
+                    " minutillos o tres antes de volver a intentarlo."
+                )
+              else:
+                st.error(
+                    "❌ Error detallado al calcular macros:"
+                    f" {error_calc[:250]}..."
+                )
 
 # =========================================================================
 # PESTAÑA 2: DIARIO NUTRICIONAL
