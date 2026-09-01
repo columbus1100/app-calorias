@@ -1,4 +1,5 @@
 from datetime import datetime
+import os
 import sqlite3
 import time
 from google import genai
@@ -27,6 +28,41 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+
+# --- GESTOR INTELIGENTE DE CLAVES (COMPATIBLE CON AQ.) ---
+def obtener_cliente_ia():
+  """Carga las claves desde los secrets y rota de forma segura."""
+  raw_keys = st.secrets.get("GEMINI_API_KEY", "")
+  keys = [k.strip() for k in raw_keys.split(",") if k.strip()]
+
+  if not keys:
+    st.error(
+        "⚠️ Configura al menos una clave 'GEMINI_API_KEY' en los Secrets de"
+        " Streamlit."
+    )
+    return None
+
+  if "key_index" not in st.session_state:
+    st.session_state.key_index = 0
+
+  st.session_state.key_index = st.session_state.key_index % len(keys)
+  active_key = keys[st.session_state.key_index]
+
+  # Forzar la variable de entorno para que el SDK reconozca las claves AQ. sin error OAuth
+  os.environ["GEMINI_API_KEY"] = active_key
+
+  return genai.Client(api_key=active_key)
+
+
+def rotar_siguiente_clave():
+  """Cambia a la siguiente clave disponible en la lista de secretos."""
+  raw_keys = st.secrets.get("GEMINI_API_KEY", "")
+  keys = [k.strip() for k in raw_keys.split(",") if k.strip()]
+  if len(keys) > 1:
+    st.session_state.key_index = (st.session_state.key_index + 1) % len(keys)
+    return True
+  return False
 
 
 # --- CONFIGURACIÓN DE BASE DE DATOS LOCAL SEGURA ---
@@ -111,19 +147,10 @@ def limpiar_db_hoy(usuario):
   conn.close()
 
 
-# --- CONFIGURACIÓN DE LA IA ---
-try:
-  client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
-except Exception as e:
-  st.error(
-      "⚠️ Configura correctamente la clave 'GEMINI_API_KEY' en los Secrets de"
-      " Streamlit."
-  )
-
 if "ultima_vez" not in st.session_state:
   st.session_state.ultima_vez = 0
 
-TIEMPO_ESPERA = 3
+TIEMPO_ESPERA = 2
 
 # --- BARRA LATERAL PROFESIONAL ---
 st.sidebar.title("🥗 Calorías AI Pro")
@@ -265,7 +292,7 @@ with pestana_analisis:
         ):
           tiempo_actual = time.time()
           if (tiempo_actual - st.session_state.ultima_vez) < TIEMPO_ESPERA:
-            st.warning("⏳ ¡Espera unos segundos antes de otra consulta!")
+            st.warning("⏳ ¡Espera un segundo antes de otra consulta!")
           else:
             st.session_state.ultima_vez = time.time()
             with st.spinner("Analizando componentes visuales..."):
@@ -279,10 +306,19 @@ with pestana_analisis:
               exito = False
               resultado_ia = ""
               ultimo_error = ""
-              for intento in range(3):
+
+              raw_keys = st.secrets.get("GEMINI_API_KEY", "")
+              total_claves = max(
+                  1, len([k for k in raw_keys.split(",") if k.strip()])
+              )
+
+              for intento_clave in range(total_claves):
+                client = obtener_cliente_ia()
+                if not client:
+                  break
                 try:
                   respuesta = client.models.generate_content(
-                      model="gemini-3.6-flash",
+                      model="gemini-2.5-flash",
                       contents=[prompt_reconocimiento, imagen],
                   )
                   resultado_ia = respuesta.text.strip()
@@ -290,7 +326,16 @@ with pestana_analisis:
                   break
                 except Exception as api_err:
                   ultimo_error = str(api_err)
-                  time.sleep(3)
+                  if (
+                      "429" in ultimo_error
+                      or "RESOURCE_EXHAUSTED" in ultimo_error
+                      or "401" in ultimo_error
+                  ):
+                    rotado = rotar_siguiente_clave()
+                    if not rotado:
+                      break
+                  else:
+                    break
 
               if exito:
                 lineas = resultado_ia.split("\n")
@@ -311,7 +356,10 @@ with pestana_analisis:
                 st.session_state.analisis_realizado = True
                 st.rerun()
               else:
-                if "429" in ultimo_error or "RESOURCE_EXHAUSTED" in ultimo_error:
+                if (
+                    "429" in ultimo_error
+                    or "RESOURCE_EXHAUSTED" in ultimo_error
+                ):
                   st.warning(
                       "⏳ Has hecho demasiadas fotos seguidas, espera dos"
                       " minutillos o tres antes de volver a intentarlo."
@@ -368,16 +416,34 @@ with pestana_analisis:
             exito_calculo = False
             res_final = None
             error_calc = ""
-            for intento in range(3):
+
+            raw_keys = st.secrets.get("GEMINI_API_KEY", "")
+            total_claves = max(
+                1, len([k for k in raw_keys.split(",") if k.strip()])
+            )
+
+            for intento_clave in range(total_claves):
+              client = obtener_cliente_ia()
+              if not client:
+                break
               try:
                 res_final = client.models.generate_content(
-                    model="gemini-3.6-flash", contents=[prompt_calculo, imagen]
+                    model="gemini-2.5-flash", contents=[prompt_calculo, imagen]
                 )
                 exito_calculo = True
                 break
               except Exception as err_c:
                 error_calc = str(err_c)
-                time.sleep(3)
+                if (
+                    "429" in error_calc
+                    or "RESOURCE_EXHAUSTED" in error_calc
+                    or "401" in error_calc
+                ):
+                  rotado = rotar_siguiente_clave()
+                  if not rotado:
+                    break
+                else:
+                  break
 
             if exito_calculo:
               texto_respuesta = res_final.text
