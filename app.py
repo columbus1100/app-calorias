@@ -7,7 +7,7 @@ import streamlit as st
 
 # --- CONFIGURACIÓN DE PÁGINA Y PWA ---
 st.set_page_config(
-    page_title="Calorías AI - Pro 2.0 📸", page_icon="icon.png", layout="wide"
+    page_title="Calorías AI - Pro 3.0 📸", page_icon="icon.png", layout="wide"
 )
 
 st.markdown(
