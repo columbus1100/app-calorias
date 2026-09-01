@@ -221,35 +221,43 @@ with pestana_analisis:
 
   if "form_key_counter" not in st.session_state:
     st.session_state.form_key_counter = 0
-
-  archivo_subido = None
-  if metodo_foto == "Subir archivo":
-    archivo_subido = st.file_uploader(
-        "Selecciona una imagen...",
-        type=["jpg", "jpeg", "png"],
-        key=f"uploader_{st.session_state.form_key_counter}",
-    )
-  else:
-    archivo_subido = st.camera_input(
-        "Toma una foto", key=f"camera_{st.session_state.form_key_counter}"
-    )
-
   if "analisis_realizado" not in st.session_state:
     st.session_state.analisis_realizado = False
   if "alimento_detectado" not in st.session_state:
     st.session_state.alimento_detectado = ""
   if "peso_estimado" not in st.session_state:
     st.session_state.peso_estimado = 200
-  if "ultima_foto" not in st.session_state:
-    st.session_state.ultima_foto = None
+  if "guardado_exitoso" not in st.session_state:
+    st.session_state.guardado_exitoso = False
+  if "resultado_texto" not in st.session_state:
+    st.session_state.resultado_texto = ""
+
+  # Botón superior rápido para resetear si el usuario quiere subir otro plato en cualquier momento
+  if st.session_state.analisis_realizado or st.session_state.guardado_exitoso:
+    if st.button(
+        "🔄 Subir o Analizar Otro Plato Nuevo",
+        type="secondary",
+        use_container_width=True,
+    ):
+      st.session_state.analisis_realizado = False
+      st.session_state.guardado_exitoso = False
+      st.session_state.alimento_detectado = ""
+      st.session_state.resultado_texto = ""
+      st.session_state.form_key_counter += 1
+      st.rerun()
+    st.markdown("---")
+
+  archivo_subido = None
+  current_key = f"input_media_{st.session_state.form_key_counter}"
+
+  if metodo_foto == "Subir archivo":
+    archivo_subido = st.file_uploader(
+        "Selecciona una imagen...", type=["jpg", "jpeg", "png"], key=current_key
+    )
+  else:
+    archivo_subido = st.camera_input("Toma una foto", key=current_key)
 
   if archivo_subido is not None:
-    if archivo_subido != st.session_state.ultima_foto:
-      st.session_state.ultima_foto = archivo_subido
-      st.session_state.analisis_realizado = False
-      st.session_state.alimento_detectado = ""
-      st.rerun()
-
     col_img, col_datos = st.columns([1, 1], gap="large")
 
     with col_img:
@@ -321,6 +329,7 @@ with pestana_analisis:
         es_correccion = st.radio(
             "¿Deseas modificar el nombre?",
             ("Mantener nombre detectado", "Corregir nombre manualmente"),
+            key=f"radio_corr_{st.session_state.form_key_counter}",
         )
 
         alimento_final = st.session_state.alimento_detectado
@@ -328,6 +337,7 @@ with pestana_analisis:
           alimento_final = st.text_input(
               "Escribe el nombre correcto:",
               value=st.session_state.alimento_detectado,
+              key=f"text_corr_{st.session_state.form_key_counter}",
           )
 
         gramos_porcion = st.slider(
@@ -336,85 +346,101 @@ with pestana_analisis:
             800,
             int(st.session_state.peso_estimado),
             step=10,
+            key=f"slider_gramos_{st.session_state.form_key_counter}",
         )
 
-        if st.button(
-            "📊 Calcular y Guardar en el Diario",
-            type="primary",
-            use_container_width=True,
-        ):
-          with st.spinner("Calculando nutrientes detallados..."):
-            prompt_calculo = (
-                f"Analiza el alimento '{alimento_final}' con un peso de"
-                f" {gramos_porcion} gramos. Devuelve la respuesta en formato"
-                " estricto separada por comas con este orden exacto (solo los"
-                " números para los valores):"
-                "\nCALORIAS: [número kcal]"
-                "\nPROTEINAS: [número gramos]"
-                "\nGRASAS: [número gramos]"
-                "\nCARBS: [número gramos]"
-                "\nY añade después un breve comentario nutricional útil."
-            )
-
-            try:
-              client = obtener_cliente_ia()
-              res_final = client.models.generate_content(
-                  model="gemini-3.5-flash", contents=[prompt_calculo, imagen]
+        if not st.session_state.guardado_exitoso:
+          if st.button(
+              "📊 Calcular y Guardar en el Diario",
+              type="primary",
+              use_container_width=True,
+          ):
+            with st.spinner("Calculando nutrientes detallados..."):
+              prompt_calculo = (
+                  f"Analiza el alimento '{alimento_final}' con un peso de"
+                  f" {gramos_porcion} gramos. Devuelve la respuesta en formato"
+                  " estricto separado por comas con este orden exacto (solo los"
+                  " números para los valores):"
+                  "\nCALORIAS: [número kcal]"
+                  "\nPROTEINAS: [número gramos]"
+                  "\nGRASAS: [número gramos]"
+                  "\nCARBS: [número gramos]"
+                  "\nY añade después un breve comentario nutricional útil."
               )
-              texto_respuesta = res_final.text
-              st.markdown("---")
-              st.markdown(
-                  f"### 📋 Resultados nutricionales para {gramos_porcion}g"
-              )
-              st.write(texto_respuesta)
 
-              import re
               try:
-                cal_match = re.search(
-                    r"CALORIAS[:\s]*(\d+)", texto_respuesta, re.IGNORECASE
+                client = obtener_cliente_ia()
+                res_final = client.models.generate_content(
+                    model="gemini-3.5-flash", contents=[prompt_calculo, imagen]
                 )
-                prot_match = re.search(
-                    r"PROTEINAS[:\s]*([\d\.]+)", texto_respuesta, re.IGNORECASE
-                )
-                gras_match = re.search(
-                    r"GRASAS[:\s]*([\d\.]+)", texto_respuesta, re.IGNORECASE
-                )
-                carb_match = re.search(
-                    r"CARBS[:\s]*([\d\.]+)", texto_respuesta, re.IGNORECASE
-                )
+                st.session_state.resultado_texto = res_final.text
 
-                val_cal = int(cal_match.group(1)) if cal_match else 300
-                val_prot = float(prot_match.group(1)) if prot_match else 15.0
-                val_gras = float(gras_match.group(1)) if gras_match else 10.0
-                val_carb = float(carb_match.group(1)) if carb_match else 30.0
+                import re
 
-                hoy = datetime.now().strftime("%Y-%m-%d")
-                guardar_en_db(
-                    usuario_actual,
-                    hoy,
-                    alimento_final,
-                    gramos_porcion,
-                    val_cal,
-                    val_prot,
-                    val_gras,
-                    val_carb,
-                )
-                st.success("✨ ¡Guardado con éxito en tu diario nutricional!")
+                try:
+                  cal_match = re.search(
+                      r"CALORIAS[:\s]*(\d+)",
+                      st.session_state.resultado_texto,
+                      re.IGNORECASE,
+                  )
+                  prot_match = re.search(
+                      r"PROTEINAS[:\s]*([\d\.]+)",
+                      st.session_state.resultado_texto,
+                      re.IGNORECASE,
+                  )
+                  gras_match = re.search(
+                      r"GRASAS[:\s]*([\d\.]+)",
+                      st.session_state.resultado_texto,
+                      re.IGNORECASE,
+                  )
+                  carb_match = re.search(
+                      r"CARBS[:\s]*([\d\.]+)",
+                      st.session_state.resultado_texto,
+                      re.IGNORECASE,
+                  )
 
-              except Exception as parse_err:
-                st.warning(f"Aviso al procesar valores: {parse_err}")
+                  val_cal = int(cal_match.group(1)) if cal_match else 300
+                  val_prot = float(prot_match.group(1)) if prot_match else 15.0
+                  val_gras = float(gras_match.group(1)) if gras_match else 10.0
+                  val_carb = float(carb_match.group(1)) if carb_match else 30.0
 
-              if st.button(
-                  "🔄 Analizar otro plato", use_container_width=True
-              ):
-                st.session_state.analisis_realizado = False
-                st.session_state.alimento_detectado = ""
-                st.session_state.ultima_foto = None
-                st.session_state.form_key_counter += 1
-                st.rerun()
+                  hoy = datetime.now().strftime("%Y-%m-%d")
+                  guardar_en_db(
+                      usuario_actual,
+                      hoy,
+                      alimento_final,
+                      gramos_porcion,
+                      val_cal,
+                      val_prot,
+                      val_gras,
+                      val_carb,
+                  )
+                  st.session_state.guardado_exitoso = True
+                  st.rerun()
 
-            except Exception as err_c:
-              st.error(f"❌ Error al calcular macros: {str(err_c)[:250]}...")
+                except Exception as parse_err:
+                  st.warning(f"Aviso al procesar valores: {parse_err}")
+
+              except Exception as err_c:
+                st.error(f"❌ Error al calcular macros: {str(err_c)[:250]}...")
+
+        if st.session_state.guardado_exitoso:
+          st.markdown("---")
+          st.markdown(f"### 📋 Resultados nutricionales para {gramos_porcion}g")
+          st.write(st.session_state.resultado_texto)
+          st.success("✨ ¡Guardado con éxito en tu diario nutricional!")
+
+          if st.button(
+              "🔄 Analizar otro plato (Nuevo)",
+              type="primary",
+              use_container_width=True,
+          ):
+            st.session_state.analisis_realizado = False
+            st.session_state.guardado_exitoso = False
+            st.session_state.alimento_detectado = ""
+            st.session_state.resultado_texto = ""
+            st.session_state.form_key_counter += 1
+            st.rerun()
 
 # =========================================================================
 # PESTAÑA 2: DIARIO NUTRICIONAL
@@ -451,7 +477,7 @@ with pestana_diario:
     )
 
 # =========================================================================
-# PESTAÑA 3: AJUSTES Y PERFIL
+# PESTAÑA 3: AJUSTes Y PERFIL
 # =========================================================================
 with pestana_config:
   st.markdown("### ⚙️ Configuración del Perfil y Preferencias")
