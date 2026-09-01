@@ -231,21 +231,8 @@ with pestana_analisis:
     st.session_state.guardado_exitoso = False
   if "resultado_texto" not in st.session_state:
     st.session_state.resultado_texto = ""
-
-  # Botón superior rápido para resetear si el usuario quiere subir otro plato en cualquier momento
-  if st.session_state.analisis_realizado or st.session_state.guardado_exitoso:
-    if st.button(
-        "🔄 Subir o Analizar Otro Plato Nuevo",
-        type="secondary",
-        use_container_width=True,
-    ):
-      st.session_state.analisis_realizado = False
-      st.session_state.guardado_exitoso = False
-      st.session_state.alimento_detectado = ""
-      st.session_state.resultado_texto = ""
-      st.session_state.form_key_counter += 1
-      st.rerun()
-    st.markdown("---")
+  if "ultima_foto_nombre" not in st.session_state:
+    st.session_state.ultima_foto_nombre = None
 
   archivo_subido = None
   current_key = f"input_media_{st.session_state.form_key_counter}"
@@ -257,7 +244,17 @@ with pestana_analisis:
   else:
     archivo_subido = st.camera_input("Toma una foto", key=current_key)
 
+  # Detectar si se ha cambiado de archivo para resetear estados al instante
   if archivo_subido is not None:
+    nombre_actual = getattr(archivo_subido, "name", "camara_foto")
+    if nombre_actual != st.session_state.ultima_foto_nombre:
+      st.session_state.ultima_foto_nombre = nombre_actual
+      st.session_state.analisis_realizado = False
+      st.session_state.guardado_exitoso = False
+      st.session_state.alimento_detectado = ""
+      st.session_state.resultado_texto = ""
+      st.rerun()
+
     col_img, col_datos = st.columns([1, 1], gap="large")
 
     with col_img:
@@ -439,6 +436,7 @@ with pestana_analisis:
             st.session_state.guardado_exitoso = False
             st.session_state.alimento_detectado = ""
             st.session_state.resultado_texto = ""
+            st.session_state.ultima_foto_nombre = None
             st.session_state.form_key_counter += 1
             st.rerun()
 
@@ -477,7 +475,7 @@ with pestana_diario:
     )
 
 # =========================================================================
-# PESTAÑA 3: AJUSTes Y PERFIL
+# PESTAÑA 3: AJUSTES Y PERFIL
 # =========================================================================
 with pestana_config:
   st.markdown("### ⚙️ Configuración del Perfil y Preferencias")
