@@ -10,26 +10,18 @@ st.set_page_config(
     page_title="Calorías AI - Pro 2.0 📸", page_icon="icon.png", layout="wide"
 )
 
-# --- ESTILOS CSS PROFESIONALES PERSONALIZADOS ---
 st.markdown(
     """
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0083B8">
     <meta name="mobile-web-app-capable" content="yes">
     <style>
-        /* Estética general y tarjetas modernas */
         .stMetric {
             background-color: rgba(28, 32, 44, 0.6);
             border: 1px solid rgba(255, 255, 255, 0.1);
             padding: 15px;
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .css-1r6slb0 {
-            gap: 1rem;
-        }
-        h1, h2, h3 {
-            letter-spacing: -0.5px;
         }
     </style>
     """,
@@ -152,7 +144,7 @@ total_prot = sum([r[3] for r in registros_hoy])
 total_grasas = sum([r[4] for r in registros_hoy])
 total_carbs = sum([r[5] for r in registros_hoy])
 
-st.sidebar.subheader(f"📊 Resumen Diario")
+st.sidebar.subheader("📊 Resumen Diario")
 st.sidebar.metric("🔥 Calorías", f"{total_cal} kcal")
 
 col_sb1, col_sb2 = st.sidebar.columns(2)
@@ -163,7 +155,9 @@ with col_sb2:
   st.metric("🍞 Carbs", f"{total_carbs:.1f}g")
 
 st.sidebar.markdown("---")
-if st.sidebar.button(f"🗑️ Reiniciar día de {usuario_actual}", use_container_width=True):
+if st.sidebar.button(
+    f"🗑️ Reiniciar día de {usuario_actual}", use_container_width=True
+):
   limpiar_db_hoy(usuario_actual)
   st.rerun()
 
@@ -182,7 +176,7 @@ if registros_hoy:
     texto_informe += f"- {r[0]} ({r[1]}g): {r[2]}kcal\n"
 
   st.sidebar.download_button(
-      label=f"📥 Descargar Informe TXT",
+      label="📥 Descargar Informe TXT",
       data=texto_informe,
       file_name=(
           f"informe_{usuario_actual.lower()}_"
@@ -196,7 +190,7 @@ if registros_hoy:
 st.title("🥗 Detector Inteligente de Calorías")
 st.markdown(
     f"Bienvenido, **{usuario_actual}**. Gestiona tu nutrición diaria con"
-    f" Inteligencia Artificial de forma rápida y precisa."
+    f" Inteligencia Artificial."
 )
 
 # --- SISTEMA DE PESTAÑAS PROFESIONALES ---
@@ -247,17 +241,22 @@ with pestana_analisis:
       st.session_state.alimento_detectado = ""
       st.rerun()
 
-    # Diseño en dos columnas profesionales
     col_img, col_datos = st.columns([1, 1], gap="large")
 
     with col_img:
-      imagen = Image.open(archivo_subido)
-      st.image(
-          imagen, caption="Imagen del plato analizado", use_container_width=True
-      )
+      try:
+        imagen = Image.open(archivo_subido)
+        st.image(
+            imagen,
+            caption="Imagen del plato analizado",
+            use_container_width=True,
+        )
+      except Exception as img_err:
+        st.error(f"Error al abrir la imagen: {img_err}")
+        imagen = None
 
     with col_datos:
-      if not st.session_state.analisis_realizado:
+      if imagen and not st.session_state.analisis_realizado:
         st.info("💡 La IA está lista para procesar tu imagen.")
         if st.button(
             "🔥 Identificar Plato y Estimar Peso",
@@ -279,6 +278,7 @@ with pestana_analisis:
 
               exito = False
               resultado_ia = ""
+              ultimo_error = ""
               for intento in range(3):
                 try:
                   respuesta = client.models.generate_content(
@@ -288,7 +288,8 @@ with pestana_analisis:
                   resultado_ia = respuesta.text.strip()
                   exito = True
                   break
-                except Exception:
+                except Exception as api_err:
+                  ultimo_error = str(api_err)
                   time.sleep(3)
 
               if exito:
@@ -310,7 +311,10 @@ with pestana_analisis:
                 st.session_state.analisis_realizado = True
                 st.rerun()
               else:
-                st.error("Error de conexión con la IA. Inténtalo de nuevo.")
+                st.error(
+                    "❌ Error detallado de la IA:"
+                    f" {ultimo_error[:250]}..."
+                )
 
       if st.session_state.analisis_realizado:
         st.success(
@@ -357,6 +361,7 @@ with pestana_analisis:
 
             exito_calculo = False
             res_final = None
+            error_calc = ""
             for intento in range(3):
               try:
                 res_final = client.models.generate_content(
@@ -364,7 +369,8 @@ with pestana_analisis:
                 )
                 exito_calculo = True
                 break
-              except Exception:
+              except Exception as err_c:
+                error_calc = str(err_c)
                 time.sleep(3)
 
             if exito_calculo:
@@ -420,7 +426,10 @@ with pestana_analisis:
                 st.session_state.form_key_counter += 1
                 st.rerun()
             else:
-              st.error("Error al calcular los macros con la IA.")
+              st.error(
+                  "❌ Error detallado al calcular macros:"
+                  f" {error_calc[:250]}..."
+              )
 
 # =========================================================================
 # PESTAÑA 2: DIARIO NUTRICIONAL
@@ -429,7 +438,6 @@ with pestana_diario:
   st.markdown(f"### 📖 Registro de comidas de hoy para **{usuario_actual}**")
 
   if registros_hoy:
-    # Cuadro resumen con columnas métricas profesionales
     col_m1, col_m2, col_m3, col_m4 = st.columns(4)
     with col_m1:
       st.metric("🔥 Calorías", f"{total_cal} kcal")
