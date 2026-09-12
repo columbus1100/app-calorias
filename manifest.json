@@ -8,13 +8,13 @@
   "description": "Calculadora e identificador inteligente de calorías y nutrientes con IA.",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/2921/2921822.png",
+      "src": "https://raw.githubusercontent.com/columbus1100/app-calorias/main/icon.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/2921/2921822.png",
+      "src": "https://raw.githubusercontent.com/columbus1100/app-calorias/main/icon.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
