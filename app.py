@@ -326,7 +326,7 @@ with pestana_analisis:
                                 contents_ia = [prompt_reconocimiento, imagen_prep]
 
                             respuesta = client.models.generate_content(
-                                model="gemini-2.5-flash",
+                                model="gemini-3.6-flash",
                                 contents=contents_ia,
                             )
                             resultado_ia = respuesta.text.strip()
@@ -406,7 +406,7 @@ with pestana_analisis:
                                 contents_calc = [prompt_calculo, preparar_imagen_movil(archivo_subido)]
 
                             res_final = client.models.generate_content(
-                                model="gemini-2.5-flash", contents=contents_calc
+                                model="gemini-3.6-flash", contents=contents_calc
                             )
                             st.session_state.resultado_texto = res_final.text
 
@@ -558,7 +558,7 @@ with pestana_plan:
             try:
                 client = obtener_cliente_ia()
                 res_plan = client.models.generate_content(
-                    model="gemini-2.5-flash",
+                    model="gemini-3.6-flash",
                     contents=[prompt_plan]
                 )
                 st.session_state.plan_semanal_generado = res_plan.text
