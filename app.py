@@ -219,13 +219,13 @@ st.markdown(
     f" Inteligencia Artificial."
 )
 
-# --- SISTEMA DE PESTAÑAS PROFESIONALES ---
-pestana_analisis, pestana_diario, pestana_config = st.tabs(
-    ["📸 Analizar Plato", "📖 Diario Nutricional", "⚙️ Ajustes y Perfil"]
+# --- SISTEMA DE PESTAÑAS PROFESIONALES (4 PESTAÑAS) ---
+pestana_analisis, pestana_diario, pestana_plan, pestana_config = st.tabs(
+    ["📸 Analizar Plato", "📖 Diario Nutricional", "📅 Plan Semanal", "⚙️ Ajustes y Perfil"]
 )
 
 # =========================================================================
-# PESTAÑA 1: ANALIZAR PLATO (ACTUALIZADO CON TEXTO)
+# PESTAÑA 1: ANALIZAR PLATO
 # =========================================================================
 with pestana_analisis:
     st.markdown("### Introduce tu comida mediante texto o fotografía")
@@ -270,7 +270,6 @@ with pestana_analisis:
     else:
         archivo_subido = st.camera_input("Toma una foto", key=current_key)
 
-    # Validar cambio de entrada/imagen para resetear estados
     identificador_actual = texto_usuario_input if metodo_foto == "Escribir descripción de texto" else getattr(archivo_subido, "name", "camara_foto")
     if archivo_subido is not None or texto_usuario_input.strip() != "":
         if identificador_actual != st.session_state.ultima_foto_nombre:
@@ -296,7 +295,6 @@ with pestana_analisis:
             st.info("📝 Modo de entrada por texto activado. Rellena la descripción y pulsa el botón.")
 
     with col_datos:
-        # Condición para mostrar el botón de análisis
         hay_contenido = (metodo_foto == "Escribir descripción de texto" and texto_usuario_input.strip() != "") or (metodo_foto != "Escribir descripción de texto" and archivo_subido is not None)
 
         if hay_contenido and not st.session_state.analisis_realizado:
@@ -321,8 +319,6 @@ with pestana_analisis:
 
                         try:
                             client = obtener_cliente_ia()
-                            
-                            # Preparamos los contenidos para Gemini dependiendo de si es texto o imagen
                             if metodo_foto == "Escribir descripción de texto":
                                 contents_ia = [prompt_reconocimiento, f"Descripción del usuario: {texto_usuario_input}"]
                             else:
@@ -513,7 +509,94 @@ with pestana_diario:
         )
 
 # =========================================================================
-# PESTAÑA 3: AJUSTES Y PERFIL
+# PESTAÑA 3: PLAN SEMANAL PARA BAJAR DE PESO
+# =========================================================================
+with pestana_plan:
+    st.markdown("### 📅 Generador de Plan Semanal Personalizado para Perder Peso")
+    st.write("Introduce tus datos antropométricos para que la IA calcule tu déficit calórico y te elabore un menú semanal completo.")
+
+    col_p1, col_p2, col_p3 = st.columns(3)
+    with col_p1:
+        edad_usr = st.number_input("Edad (años):", min_value=15, max_value=100, value=30)
+        peso_usr = st.number_input("Peso actual (kg):", min_value=35.0, max_value=250.0, value=75.0, step=0.5)
+    with col_p2:
+        altura_usr = st.number_input("Altura (cm):", min_value=120, max_value=220, value=170)
+        genero_usr = st.selectbox("Sexo biológico:", ["Hombre", "Mujer"])
+    with col_p3:
+        actividad_usr = st.selectbox(
+            "Nivel de actividad física:",
+            [
+                "Sedentario (poco o nada ejercicio)",
+                "Ligero (ejercicio ligero 1-3 días/semana)",
+                "Moderado (ejercicio moderado 3-5 días/semana)",
+                "Activo (ejercicio fuerte 6-7 días/semana)"
+            ]
+        )
+        preferencias_usr = st.text_input("Preferencias o alergias (opcional):", placeholder="Ej: Sin gluten, vegetariano, sin frutos secos...")
+
+    if "plan_semanal_generado" not in st.session_state:
+        st.session_state.plan_semanal_generado = ""
+
+    if st.button("🚀 Generar Plan Semanal de Dieta Personalizada", type="primary", use_container_width=True):
+        with st.spinner("Calculando TDEE, déficit calórico óptimo y diseñando menú semanal..."):
+            prompt_plan = (
+                f"Actúa como un nutricionista experto y deportivo. Diseña un PLAN SEMANAL DE DIETA PARA BAJAR DE PESO estricto y saludable "
+                f"para un usuario con las siguientes características:\n"
+                f"- Edad: {edad_usr} años\n"
+                f"- Sexo: {genero_usr}\n"
+                f"- Altura: {altura_usr} cm\n"
+                f"- Peso actual: {peso_usr} kg\n"
+                f"- Nivel de actividad: {actividad_usr}\n"
+                f"- Restricciones/Preferencias: {preferencias_usr if preferencias_usr else 'Ninguna'}\n\n"
+                f"El plan debe incluir:\n"
+                f"1. Calorías diarias recomendadas y distribución de macros (Proteínas, Grasas, Carbohidratos) para asegurar pérdida de grasa.\n"
+                f"2. Un menú detallado de Lunes a Domingo (Desayuno, Almuerzo, Comida, Merienda y Cena) con porciones orientativas en gramos.\n"
+                f"3. Consejos prácticos de hidratación y cumplimiento.\n"
+                f"Estructura el texto de manera limpia, profesional y lista para imprimir."
+            )
+
+            try:
+                client = obtener_cliente_ia()
+                res_plan = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=[prompt_plan]
+                )
+                st.session_state.plan_semanal_generado = res_plan.text
+                st.success("¡Plan semanal generado con éxito!")
+            except Exception as e:
+                st.error(f"Error al generar el plan con la IA: {e}")
+
+    if st.session_state.plan_semanal_generado:
+        st.markdown("---")
+        st.markdown("### 📄 Tu Plan Nutricional Personalizado")
+        
+        # Contenedor visual para el plan
+        st.markdown(st.session_state.plan_semanal_generado)
+
+        st.markdown("---")
+        col_dl1, col_dl2 = st.columns(2)
+        with col_dl1:
+            st.download_button(
+                label="📥 Descargar Plan Semanal (TXT)",
+                data=st.session_state.plan_semanal_generado,
+                file_name=f"plan_semanal_perder_peso_{usuario_actual.lower()}.txt",
+                mime="text/plain",
+                use_container_width=True
+            )
+        with col_dl2:
+            if st.button("🖨️ Imprimir Plan (Abrir vista de impresión)", use_container_width=True):
+                st.markdown(
+                    """
+                    <script>
+                    window.print();
+                    </script>
+                    """,
+                    unsafe_allow_html=True
+                )
+                st.info("💡 Si la ventana de impresión no se abre automáticamente, usa las opciones de impresión de tu navegador (Ctrl+P o Cmd+P).")
+
+# =========================================================================
+# PESTAÑA 4: AJUSTES Y PERFIL
 # =========================================================================
 with pestana_config:
     st.markdown("### ⚙️ Configuración del Perfil y Preferencias")
