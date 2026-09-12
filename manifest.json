@@ -1,15 +1,179 @@
-{
-  "short_name": "Streamlit",
-  "name": "Streamlit",
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de App Android (TWA/PWA)</title>
+    <style>
+        :root {
+            --bg-color: #0e1117;
+            --card-bg: #161b22;
+            --accent-color: #00d2ff;
+            --text-color: #e6edf3;
+            --subtext-color: #8b949e;
+            --border-color: #30363d;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 90vh;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+
+        h1 {
+            color: var(--accent-color);
+            font-size: 1.5rem;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        p {
+            color: var(--subtext-color);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .step {
+            margin: 20px 0;
+            padding: 15px;
+            background: #21262d;
+            border-left: 4px solid var(--accent-color);
+            border-radius: 4px;
+        }
+
+        .step-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #fff;
+        }
+
+        .code-box {
+            background: #0d1117;
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #7ee787;
+            overflow-x: auto;
+            position: relative;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .btn {
+            background-color: var(--accent-color);
+            color: #000;
+            border: none;
+            padding: 10px 18px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn-secondary {
+            background-color: #30363d;
+            color: var(--text-color);
+        }
+
+        .preview-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 16px;
+            border: 2px solid var(--accent-color);
+            object-fit: cover;
+            margin: 10px 0;
+        }
+
+        .flex-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="flex-center">
+        <img src="https://raw.githubusercontent.com/columbus1100/app-calorias/main/icon.png" alt="Icono Neón" class="preview-icon" id="iconImg" onerror="this.src='https://via.placeholder.com/80/00d2ff/000000?text=App'">
+        <h1>Calorías AI Pro - APK Creator</h1>
+        <p>Genera la aplicación Android omitiendo las restricciones de Streamlit Cloud.</p>
+    </div>
+
+    <div class="step">
+        <div class="step-title">Paso 1: Copia tu Manifest Completo</div>
+        <p>Este código incluye la URL directa de tu icono de neón subido a tu GitHub:</p>
+        <div class="code-box" id="manifestCode">{
+  "name": "Calorías AI Pro",
+  "short_name": "Calorías AI",
+  "start_url": "https://app-calorias-ycreehfhciajrwt3pdgknf.streamlit.app/",
+  "display": "standalone",
+  "background_color": "#0E1117",
+  "theme_color": "#0083B8",
   "icons": [
     {
-      "src": "favicon_512.png",
+      "src": "https://raw.githubusercontent.com/columbus1100/app-calorias/main/icon.png",
+      "sizes": "512x512",
       "type": "image/png",
-      "sizes": "512x512"
+      "purpose": "any maskable"
     }
-  ],
-  "start_url": "/",
-  "display": "standalone",
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff"
-}
+  ]
+}</div>
+        <button class="btn btn-secondary" onclick="copyCode()">📋 Copiar Manifest</button>
+    </div>
+
+    <div class="step">
+        <div class="step-title">Paso 2: Generar APK mediante PWABuilder Studio</div>
+        <p>Abre el empaquetador directo (sin análisis de URL):</p>
+        <a href="https://www.pwabuilder.com/publish" target="_blank" class="btn">🚀 Abrir PWABuilder Studio</a>
+    </div>
+
+    <div class="step">
+        <div class="step-title">Paso 3: Instrucciones en PWABuilder Studio</div>
+        <ol style="margin: 5px 0 0 0; padding-left: 20px; color: var(--subtext-color); font-size: 0.9rem;">
+            <li>Pega el código JSON que has copiado arriba.</li>
+            <li>En la sección de icono, verifica que carga la imagen del plato de neón.</li>
+            <li>Haz clic directamente en <b>Generate Android Package</b> para descargar tu paquete `.apk` / `.aab`.</li>
+        </ol>
+    </div>
+</div>
+
+<script>
+    function copyCode() {
+        const text = document.getElementById('manifestCode').innerText;
+        navigator.clipboard.writeText(text).then(() => {
+            alert('¡Código manifest copiado al portapapeles!');
+        });
+    }
+</script>
+
+</body>
+</html>
