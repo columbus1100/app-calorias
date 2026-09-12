@@ -13,7 +13,7 @@ st.set_page_config(
 
 st.markdown(
     """
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="https://raw.githubusercontent.com/columbus1100/app-calorias/main/manifest.json">
     <meta name="theme-color" content="#0083B8">
     <meta name="mobile-web-app-capable" content="yes">
     <style>
