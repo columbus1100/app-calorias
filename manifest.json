@@ -1,9 +1,9 @@
 {
-  "name": "Calorías AI - Detector por Foto",
-  "short_name": "Calorías AI",
+  "name": "Calorías AI Pro",
+  "short_name": "CaloríasAI",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#0083B8",
   "theme_color": "#0083B8",
   "icons": [
     {
