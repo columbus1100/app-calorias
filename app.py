@@ -153,6 +153,8 @@ if "usuario_identificado" not in st.session_state:
     st.session_state.usuario_identificado = False
 if "usuario_actual" not in st.session_state:
     st.session_state.usuario_actual = ""
+if "es_pro" not in st.session_state:
+    st.session_state.es_pro = False  # Por defecto el usuario es Gratis
 
 TIEMPO_ESPERA = 2
 
@@ -162,13 +164,17 @@ TIEMPO_ESPERA = 2
 if not st.session_state.usuario_identificado:
     st.title("🥗 Bienvenido a Calorías AI Pro")
     st.markdown("### Por favor, identifícate para continuar")
-    
+
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         with st.form("login_form"):
-            nombre_input = st.text_input("👤 ¿Cuál es tu nombre o perfil?", placeholder="Ej: Lorena")
-            submitted = st.form_submit_button("Entrar a la aplicación", use_container_width=True)
-            
+            nombre_input = st.text_input(
+                "👤 ¿Cuál es tu nombre o perfil?", placeholder="Ej: Lorena"
+            )
+            submitted = st.form_submit_button(
+                "Entrar a la aplicación", use_container_width=True
+            )
+
             if submitted:
                 if nombre_input.strip() == "":
                     st.error("⚠️ Debes introducir un nombre para poder entrar.")
@@ -186,17 +192,26 @@ else:
     # --- BARRA LATERAL PROFESIONAL ---
     st.sidebar.title("🥗 Calorías AI Pro")
     st.sidebar.markdown(f"👤 **Perfil:** {usuario_actual}")
-    
+
+    if st.session_state.es_pro:
+        st.sidebar.success("⭐ USUARIO PRO ACTIVO")
+    else:
+        st.sidebar.info("🆓 Cuenta Gratuita")
+
     if st.sidebar.button("🚪 Cerrar Sesión", use_container_width=True):
         st.session_state.usuario_identificado = False
         st.session_state.usuario_actual = ""
         st.rerun()
-        
+
     st.sidebar.markdown("---")
-    
+
     objetivo = st.sidebar.selectbox(
         "🎯 Objetivo Nutricional:",
-        ["Mantener peso", "Definición / Perder grasa", "Volumen / Ganar músculo"],
+        [
+            "Mantener peso",
+            "Definición / Perder grasa",
+            "Volumen / Ganar músculo",
+        ],
     )
 
     st.sidebar.markdown("---")
@@ -252,13 +267,16 @@ else:
     st.title("🥗 Detector Inteligente de Calorías")
     st.markdown(
         f"Bienvenido, **{usuario_actual}**. Gestiona tu nutrición diaria con"
-        f" Inteligencia Artificial."
+        " Inteligencia Artificial."
     )
 
     # --- SISTEMA DE PESTAÑAS PROFESIONALES (4 PESTAÑAS) ---
-    pestana_analisis, pestana_diario, pestana_plan, pestana_config = st.tabs(
-        ["📸 Analizar Plato", "📖 Diario Nutricional", "📅 Plan Semanal", "⚙️ Ajustes y Perfil"]
-    )
+    pestana_analisis, pestana_diario, pestana_plan, pestana_config = st.tabs([
+        "📸 Analizar Plato",
+        "📖 Diario Nutricional",
+        "⭐ Plan Semanal (PRO)",
+        "⚙️ Ajustes y Perfil",
+    ])
 
     # =========================================================================
     # PESTAÑA 1: ANALIZAR PLATO
@@ -268,7 +286,11 @@ else:
 
         metodo_foto = st.radio(
             "Método de entrada:",
-            ("Escribir descripción de texto", "Subir archivo", "Hacer foto con la cámara"),
+            (
+                "Escribir descripción de texto",
+                "Subir archivo",
+                "Hacer foto con la cámara",
+            ),
             horizontal=True,
         )
 
@@ -294,8 +316,11 @@ else:
         if metodo_foto == "Escribir descripción de texto":
             texto_usuario_input = st.text_area(
                 "¿Qué has comido? (Describe plato y cantidad aproximada):",
-                placeholder="Ej: Un bol de arroz con pechuga de pollo a la plancha, unos 250g en total.",
-                key=f"text_desc_{st.session_state.form_key_counter}"
+                placeholder=(
+                    "Ej: Un bol de arroz con pechuga de pollo a la plancha, unos"
+                    " 250g en total."
+                ),
+                key=f"text_desc_{st.session_state.form_key_counter}",
             )
         elif metodo_foto == "Subir archivo":
             archivo_subido = st.file_uploader(
@@ -306,7 +331,11 @@ else:
         else:
             archivo_subido = st.camera_input("Toma una foto", key=current_key)
 
-        identificador_actual = texto_usuario_input if metodo_foto == "Escribir descripción de texto" else getattr(archivo_subido, "name", "camara_foto")
+        identificador_actual = (
+            texto_usuario_input
+            if metodo_foto == "Escribir descripción de texto"
+            else getattr(archivo_subido, "name", "camara_foto")
+        )
         if archivo_subido is not None or texto_usuario_input.strip() != "":
             if identificador_actual != st.session_state.ultima_foto_nombre:
                 st.session_state.ultima_foto_nombre = identificador_actual
@@ -319,7 +348,10 @@ else:
         col_img, col_datos = st.columns([1, 1], gap="large")
 
         with col_img:
-            if metodo_foto != "Escribir descripción de texto" and archivo_subido is not None:
+            if (
+                metodo_foto != "Escribir descripción de texto"
+                and archivo_subido is not None
+            ):
                 imagen = preparar_imagen_movil(archivo_subido)
                 if imagen:
                     st.image(
@@ -328,10 +360,19 @@ else:
                         use_container_width=True,
                     )
             else:
-                st.info("📝 Modo de entrada por texto activado. Rellena la descripción y pulsa el botón.")
+                st.info(
+                    "📝 Modo de entrada por texto activado. Rellena la"
+                    " descripción y pulsa el botón."
+                )
 
         with col_datos:
-            hay_contenido = (metodo_foto == "Escribir descripción de texto" and texto_usuario_input.strip() != "") or (metodo_foto != "Escribir descripción de texto" and archivo_subido is not None)
+            hay_contenido = (
+                metodo_foto == "Escribir descripción de texto"
+                and texto_usuario_input.strip() != ""
+            ) or (
+                metodo_foto != "Escribir descripción de texto"
+                and archivo_subido is not None
+            )
 
             if hay_contenido and not st.session_state.analisis_realizado:
                 st.info("💡 La IA está lista para procesar tu información.")
@@ -341,25 +382,44 @@ else:
                     use_container_width=True,
                 ):
                     tiempo_actual = time.time()
-                    if (tiempo_actual - st.session_state.ultima_vez) < TIEMPO_ESPERA:
-                        st.warning("⏳ ¡Espera un segundo antes de otra consulta!")
+                    if (
+                        tiempo_actual - st.session_state.ultima_vez
+                    ) < TIEMPO_ESPERA:
+                        st.warning(
+                            "⏳ ¡Espera un segundo antes de otra consulta!"
+                        )
                     else:
                         st.session_state.ultima_vez = time.time()
                         with st.spinner("Analizando componentes..."):
-                            
+
                             prompt_reconocimiento = (
-                                "Analiza este alimento o plato descrito. Responde estrictamente con una estructura de dos líneas:\n"
-                                "Línea 1: El nombre claro y directo del plato.\n"
-                                "Línea 2: Una estimación numérica del peso total en gramos (solo el número entero, ej: 350)."
+                                "Analiza este alimento o plato descrito. Responde"
+                                " estrictamente con una estructura de dos"
+                                " líneas:\nLínea 1: El nombre claro y directo"
+                                " del plato.\nLínea 2: Una estimación numérica"
+                                " del peso total en gramos (solo el número"
+                                " entero, ej: 350)."
                             )
 
                             try:
                                 client = obtener_cliente_ia()
-                                if metodo_foto == "Escribir descripción de texto":
-                                    contents_ia = [prompt_reconocimiento, f"Descripción del usuario: {texto_usuario_input}"]
+                                if (
+                                    metodo_foto
+                                    == "Escribir descripción de texto"
+                                ):
+                                    contents_ia = [
+                                        prompt_reconocimiento,
+                                        f"Descripción del usuario:"
+                                        f" {texto_usuario_input}",
+                                    ]
                                 else:
-                                    imagen_prep = preparar_imagen_movil(archivo_subido)
-                                    contents_ia = [prompt_reconocimiento, imagen_prep]
+                                    imagen_prep = preparar_imagen_movil(
+                                        archivo_subido
+                                    )
+                                    contents_ia = [
+                                        prompt_reconocimiento,
+                                        imagen_prep,
+                                    ]
 
                                 respuesta = client.models.generate_content(
                                     model="gemini-3.6-flash",
@@ -368,24 +428,35 @@ else:
                                 resultado_ia = respuesta.text.strip()
 
                                 lineas = resultado_ia.split("\n")
-                                st.session_state.alimento_detectado = lineas[0].replace(
-                                    "Línea 1:", ""
-                                ).strip()
+                                st.session_state.alimento_detectado = (
+                                    lineas[0].replace("Línea 1:", "").strip()
+                                )
                                 try:
                                     import re
+
                                     match = re.search(
-                                        r"\d+", lineas[1] if len(lineas) > 1 else resultado_ia
+                                        r"\d+",
+                                        lineas[1]
+                                        if len(lineas) > 1
+                                        else resultado_ia,
                                     )
                                     if match:
-                                        st.session_state.peso_estimado = int(match.group())
+                                        st.session_state.peso_estimado = int(
+                                            match.group()
+                                        )
                                 except Exception:
                                     st.session_state.peso_estimado = 200
 
                                 st.session_state.analisis_realizado = True
-                                st.session_state.current_texto_input = texto_usuario_input
+                                st.session_state.current_texto_input = (
+                                    texto_usuario_input
+                                )
                                 st.rerun()
                             except Exception as api_err:
-                                st.error(f"❌ Error de la IA: {str(api_err)[:250]}...")
+                                st.error(
+                                    "❌ Error de la IA:"
+                                    f" {str(api_err)[:250]}..."
+                                )
 
             if st.session_state.analisis_realizado:
                 st.success(
@@ -394,7 +465,10 @@ else:
 
                 es_correccion = st.radio(
                     "¿Deseas modificar el nombre?",
-                    ("Mantener nombre detectado", "Corregir nombre manualmente"),
+                    (
+                        "Mantener nombre detectado",
+                        "Corregir nombre manualmente",
+                    ),
                     key=f"radio_corr_{st.session_state.form_key_counter}",
                 )
 
@@ -423,30 +497,44 @@ else:
                     ):
                         with st.spinner("Calculando nutrientes detallados..."):
                             prompt_calculo = (
-                                f"Analiza el alimento '{alimento_final}' con un peso de"
-                                f" {gramos_porcion} gramos. Devuelve la respuesta en formato"
-                                " estricto separado con este orden exacto (solo los"
-                                " números para los valores):"
-                                "\nCALORIAS: [número kcal]"
-                                "\nPROTEINAS: [número gramos]"
-                                "\nGRASAS: [número gramos]"
-                                "\nCARBS: [número gramos]"
-                                "\nY añade después un breve comentario nutricional útil."
+                                f"Analiza el alimento '{alimento_final}' con un"
+                                f" peso de {gramos_porcion} gramos. Devuelve la"
+                                " respuesta en formato estricto separado con"
+                                " este orden exacto (solo los números para los"
+                                " valores):\nCALORIAS: [número"
+                                " kcal]\nPROTEINAS: [número gramos]\nGRASAS:"
+                                " [número gramos]\nCARBS: [número gramos]\nY"
+                                " añade después un breve comentario nutricional"
+                                " útil."
                             )
 
                             try:
                                 client = obtener_cliente_ia()
-                                if metodo_foto == "Escribir descripción de texto":
-                                    contents_calc = [prompt_calculo, f"Descripción previa: {st.session_state.get('current_texto_input', '')}"]
+                                if (
+                                    metodo_foto
+                                    == "Escribir descripción de texto"
+                                ):
+                                    contents_calc = [
+                                        prompt_calculo,
+                                        f"Descripción previa:"
+                                        f" {st.session_state.get('current_texto_input', '')}",
+                                    ]
                                 else:
-                                    contents_calc = [prompt_calculo, preparar_imagen_movil(archivo_subido)]
+                                    contents_calc = [
+                                        prompt_calculo,
+                                        preparar_imagen_movil(archivo_subido),
+                                    ]
 
                                 res_final = client.models.generate_content(
-                                    model="gemini-3.6-flash", contents=contents_calc
+                                    model="gemini-3.6-flash",
+                                    contents=contents_calc,
                                 )
-                                st.session_state.resultado_texto = res_final.text
+                                st.session_state.resultado_texto = (
+                                    res_final.text
+                                )
 
                                 import re
+
                                 try:
                                     cal_match = re.search(
                                         r"CALORIAS[:\s]*(\d+)",
@@ -469,10 +557,26 @@ else:
                                         re.IGNORECASE,
                                     )
 
-                                    val_cal = int(cal_match.group(1)) if cal_match else 300
-                                    val_prot = float(prot_match.group(1)) if prot_match else 15.0
-                                    val_gras = float(gras_match.group(1)) if gras_match else 10.0
-                                    val_carb = float(carb_match.group(1)) if carb_match else 30.0
+                                    val_cal = (
+                                        int(cal_match.group(1))
+                                        if cal_match
+                                        else 300
+                                    )
+                                    val_prot = (
+                                        float(prot_match.group(1))
+                                        if prot_match
+                                        else 15.0
+                                    )
+                                    val_gras = (
+                                        float(gras_match.group(1))
+                                        if gras_match
+                                        else 10.0
+                                    )
+                                    val_carb = (
+                                        float(carb_match.group(1))
+                                        if carb_match
+                                        else 30.0
+                                    )
 
                                     hoy = datetime.now().strftime("%Y-%m-%d")
                                     guardar_en_db(
@@ -489,14 +593,21 @@ else:
                                     st.rerun()
 
                                 except Exception as parse_err:
-                                    st.warning(f"Aviso al procesar valores: {parse_err}")
+                                    st.warning(
+                                        f"Aviso al procesar valores: {parse_err}"
+                                    )
 
                             except Exception as err_c:
-                                st.error(f"❌ Error al calcular macros: {str(err_c)[:250]}...")
+                                st.error(
+                                    "❌ Error al calcular macros:"
+                                    f" {str(err_c)[:250]}..."
+                                )
 
                 if st.session_state.guardado_exitoso:
                     st.markdown("---")
-                    st.markdown(f"### 📋 Resultados nutricionales para {gramos_porcion}g")
+                    st.markdown(
+                        f"### 📋 Resultados nutricionales para {gramos_porcion}g"
+                    )
                     st.write(st.session_state.resultado_texto)
                     st.success("✨ ¡Guardado con éxito en tu diario nutricional!")
 
@@ -517,7 +628,9 @@ else:
     # PESTAÑA 2: DIARIO NUTRICIONAL
     # =========================================================================
     with pestana_diario:
-        st.markdown(f"### 📖 Registro de comidas de hoy para **{usuario_actual}**")
+        st.markdown(
+            f"### 📖 Registro de comidas de hoy para **{usuario_actual}**"
+        )
 
         if registros_hoy:
             col_m1, col_m2, col_m3, col_m4 = st.columns(4)
@@ -535,107 +648,191 @@ else:
             for idx, item in enumerate(registros_hoy):
                 with st.container():
                     st.markdown(
-                        f"""**{idx+1}. {item[0]}**  
-                        ⚖️ **Peso:** {item[1]}g  |  🔥 **Calorías:** {item[2]} kcal  |  🥩 **Prot:** {item[3]}g  |  🥑 **Grasas:** {item[4]}g  |  🍞 **Carbs:** {item[5]}g"""
+                        f"**{idx+1}. {item[0]}**  \n⚖️ **Peso:** {item[1]}g  |"
+                        f"  🔥 **Calorías:** {item[2]} kcal  |  🥩 **Prot:**"
+                        f" {item[3]}g  |  🥑 **Grasas:** {item[4]}g  |  🍞"
+                        f" **Carbs:** {item[5]}g"
                     )
                     st.divider()
         else:
             st.info(
-                "📭 Aún no hay alimentos registrados para hoy. ¡Sube una foto o escribe tu comida!"
+                "📭 Aún no hay alimentos registrados para hoy. ¡Sube una foto o"
+                " escribe tu comida!"
             )
 
     # =========================================================================
-    # PESTAÑA 3: PLAN SEMANAL PARA BAJAR DE PESO
+    # PESTAÑA 3: PLAN SEMANAL DE PAGO (SOLO USUARIOS PRO)
     # =========================================================================
     with pestana_plan:
-        st.markdown("### 📅 Generador de Plan Semanal Personalizado para Perder Peso")
-        st.write("Introduce tus datos antropométricos para que la IA calcule tu déficit calórico y te elabore un menú semanal completo.")
+        st.markdown("### 📅 Plan Semanal de Dieta Personalizada")
 
-        col_p1, col_p2, col_p3 = st.columns(3)
-        with col_p1:
-            edad_usr = st.number_input("Edad (años):", min_value=15, max_value=100, value=30)
-            peso_usr = st.number_input("Peso actual (kg):", min_value=35.0, max_value=250.0, value=75.0, step=0.5)
-        with col_p2:
-            altura_usr = st.number_input("Altura (cm):", min_value=120, max_value=220, value=170)
-            genero_usr = st.selectbox("Sexo biológico:", ["Hombre", "Mujer"])
-        with col_p3:
-            actividad_usr = st.selectbox(
-                "Nivel de actividad física:",
-                [
-                    "Sedentario (poco o nada ejercicio)",
-                    "Ligero (ejercicio ligero 1-3 días/semana)",
-                    "Moderado (ejercicio moderado 3-5 días/semana)",
-                    "Activo (ejercicio fuerte 6-7 días/semana)"
-                ]
+        # Comprobación de si el usuario ha pagado (Es PRO)
+        if not st.session_state.es_pro:
+            # PANTALLA BLOQUEADA PARA USUARIOS QUE NO HAN PAGADO
+            st.warning("🔒 Esta función es exclusiva para miembros PRO")
+            st.write(
+                "Consigue un plan nutricional a tu medida, cálculos de déficit y"
+                " menú completo de Lunes a Domingo por solo **4,99€/mes**."
             )
-            preferencias_usr = st.text_input("Preferencias o alergias (opcional):", placeholder="Ej: Sin gluten, vegetariano, sin frutos secos...")
 
-        if "plan_semanal_generado" not in st.session_state:
-            st.session_state.plan_semanal_generado = ""
-
-        if st.button("🚀 Generar Plan Semanal de Dieta Personalizada", type="primary", use_container_width=True):
-            with st.spinner("Calculando TDEE, déficit calórico óptimo y diseñando menú semanal..."):
-                prompt_plan = (
-                    f"Actúa como un nutricionista experto y deportivo. Diseña un PLAN SEMANAL DE DIETA PARA BAJAR DE PESO estricto y saludable "
-                    f"para un usuario con las siguientes características:\n"
-                    f"- Edad: {edad_usr} años\n"
-                    f"- Sexo: {genero_usr}\n"
-                    f"- Altura: {altura_usr} cm\n"
-                    f"- Peso actual: {peso_usr} kg\n"
-                    f"- Nivel de actividad: {actividad_usr}\n"
-                    f"- Restricciones/Preferencias: {preferencias_usr if preferencias_usr else 'Ninguna'}\n\n"
-                    f"El plan debe incluir:\n"
-                    f"1. Calorías diarias recomendadas y distribución de macros (Proteínas, Grasas, Carbohidratos) para asegurar pérdida de grasa.\n"
-                    f"2. Un menú detallado de Lunes a Domingo (Desayuno, Almuerzo, Comida, Merienda y Cena) con porciones orientativas en gramos.\n"
-                    f"3. Consejos prácticos de hidratación y cumplimiento.\n"
-                    f"Estructura el texto de manera limpia, profesional y lista para imprimir."
+            col_pago1, col_pago2 = st.columns([2, 1])
+            with col_pago1:
+                st.link_button(
+                    "💳 Suscribirme por 4,99€/mes (Suscripción)",
+                    "https://buy.stripe.com/tu_enlace_de_pago",
+                    type="primary",
+                    use_container_width=True,
                 )
 
-                try:
-                    client = obtener_cliente_ia()
-                    res_plan = client.models.generate_content(
-                        model="gemini-3.6-flash",
-                        contents=[prompt_plan]
-                    )
-                    st.session_state.plan_semanal_generado = res_plan.text
-                    st.success("¡Plan semanal generado con éxito!")
-                except Exception as e:
-                    st.error(f"Error al generar el plan con la IA: {e}")
-
-        if st.session_state.plan_semanal_generado:
             st.markdown("---")
-            st.markdown("### 📄 Tu Plan Nutricional Personalizado")
-            
-            # Contenedor visual para el plan
-            st.markdown(st.session_state.plan_semanal_generado)
+            st.info("💡 Modo Pruebas para el Creador (Para probar la app):")
+            if st.checkbox("🧪 Activar Modo PRO de prueba"):
+                st.session_state.es_pro = True
+                st.rerun()
 
-            st.markdown("---")
-            col_dl1, col_dl2 = st.columns(2)
-            with col_dl1:
-                st.download_button(
-                    label="📥 Descargar Plan Semanal (TXT)",
-                    data=st.session_state.plan_semanal_generado,
-                    file_name=f"plan_semanal_perder_peso_{usuario_actual.lower()}.txt",
-                    mime="text/plain",
-                    use_container_width=True
+        else:
+            # PANTALLA DESBLOQUEADA PARA USUARIOS PRO
+            st.success(
+                "🎉 ¡Eres usuario PRO! Tienes acceso ilimitado al Plan"
+                " Semanal."
+            )
+            st.write(
+                "Introduce tus datos antropométricos para que la IA calcule tu"
+                " déficit calórico y te elabore un menú semanal completo."
+            )
+
+            col_p1, col_p2, col_p3 = st.columns(3)
+            with col_p1:
+                edad_usr = st.number_input(
+                    "Edad (años):", min_value=15, max_value=100, value=30
                 )
-            with col_dl2:
-                if st.button("🖨️ Imprimir Plan (Abrir vista de impresión)", use_container_width=True):
-                    st.markdown(
-                        """
-                        <script>
-                        window.print();
-                        </script>
-                        """,
-                        unsafe_allow_html=True
+                peso_usr = st.number_input(
+                    "Peso actual (kg):",
+                    min_value=35.0,
+                    max_value=250.0,
+                    value=75.0,
+                    step=0.5,
+                )
+            with col_p2:
+                altura_usr = st.number_input(
+                    "Altura (cm):", min_value=120, max_value=220, value=170
+                )
+                genero_usr = st.selectbox("Sexo biológico:", ["Hombre", "Mujer"])
+            with col_p3:
+                actividad_usr = st.selectbox(
+                    "Nivel de actividad física:",
+                    [
+                        "Sedentario (poco o nada ejercicio)",
+                        "Ligero (ejercicio ligero 1-3 días/semana)",
+                        "Moderado (ejercicio moderado 3-5 días/semana)",
+                        "Activo (ejercicio fuerte 6-7 días/semana)",
+                    ],
+                )
+                preferencias_usr = st.text_input(
+                    "Preferencias o alergias (opcional):",
+                    placeholder="Ej: Sin gluten, vegetariano, sin frutos secos...",
+                )
+
+            if "plan_semanal_generado" not in st.session_state:
+                st.session_state.plan_semanal_generado = ""
+
+            if st.button(
+                "🚀 Generar Plan Semanal de Dieta Personalizada",
+                type="primary",
+                use_container_width=True,
+            ):
+                with st.spinner(
+                    "Calculando TDEE, déficit calórico óptimo y diseñando menú"
+                    " semanal..."
+                ):
+                    prompt_plan = (
+                        "Actúa como un nutricionista experto y deportivo."
+                        " Diseña un PLAN SEMANAL DE DIETA PARA BAJAR DE PESO"
+                        " estricto y saludable para un usuario con las"
+                        " siguientes características:\n- Edad:"
+                        f" {edad_usr} años\n- Sexo: {genero_usr}\n- Altura:"
+                        f" {altura_usr} cm\n- Peso actual: {peso_usr} kg\n-"
+                        f" Nivel de actividad: {actividad_usr}\n- Restricciones/Preferencias:"
+                        f" {preferencias_usr if preferencias_usr else 'Ninguna'}\n\nEl"
+                        " plan debe incluir:\n1. Calorías diarias"
+                        " recomendadas y distribución de macros (Proteínas,"
+                        " Grasas, Carbohidratos) para asegurar pérdida de"
+                        " grasa.\n2. Un menú detallado de Lunes a Domingo"
+                        " (Desayuno, Almuerzo, Comida, Merienda y Cena) con"
+                        " porciones orientativas en gramos.\n3. Consejos"
+                        " prácticos de hidratación y cumplimiento.\nEstructura"
+                        " el texto de manera limpia, profesional y lista para"
+                        " imprimir."
                     )
-                    st.info("💡 Si la ventana de impresión no se abre automáticamente, usa las opciones de impresión de tu navegador (Ctrl+P o Cmd+P).")
+
+                    try:
+                        client = obtener_cliente_ia()
+                        res_plan = client.models.generate_content(
+                            model="gemini-3.6-flash", contents=[prompt_plan]
+                        )
+                        st.session_state.plan_semanal_generado = (
+                            res_plan.text
+                        )
+                        st.success("¡Plan semanal generado con éxito!")
+                    except Exception as e:
+                        st.error(f"Error al generar el plan con la IA: {e}")
+
+            if st.session_state.plan_semanal_generado:
+                st.markdown("---")
+                st.markdown("### 📄 Tu Plan Nutricional Personalizado")
+                st.markdown(st.session_state.plan_semanal_generado)
+
+                st.markdown("---")
+                col_dl1, col_dl2 = st.columns(2)
+                with col_dl1:
+                    st.download_button(
+                        label="📥 Descargar Plan Semanal (TXT)",
+                        data=st.session_state.plan_semanal_generado,
+                        file_name=(
+                            "plan_semanal_perder_peso_"
+                            f"{usuario_actual.lower()}.txt"
+                        ),
+                        mime="text/plain",
+                        use_container_width=True,
+                    )
+                with col_dl2:
+                    if st.button(
+                        "🖨️ Imprimir Plan (Abrir vista de impresión)",
+                        use_container_width=True,
+                    ):
+                        st.markdown(
+                            """
+                            <script>
+                            window.print();
+                            </script>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+                        st.info(
+                            "💡 Si la ventana de impresión no se abre"
+                            " automáticamente, usa las opciones de impresión de"
+                            " tu navegador (Ctrl+P o Cmd+P)."
+                        )
 
     # =========================================================================
     # PESTAÑA 4: AJUSTES Y PERFIL
     # =========================================================================
     with pestana_config:
         st.markdown("### ⚙️ Configuración del Perfil")
-        st.write("Si necesitas cambiar tu nombre o corregirlo, puedes cerrar sesión desde el menú lateral izquierdo.")
-        
-        st.info("¡Más opciones de configuración estarán disponibles en próximas actualizaciones!")
+        st.write(
+            "Si necesitas cambiar tu nombre o corregirlo, puedes cerrar sesión"
+            " desde el menú lateral izquierdo."
+        )
+
+        st.markdown("---")
+        st.markdown("### 💳 Estado de la suscripción")
+        if st.session_state.es_pro:
+            st.success("Suscripción activa: **Plan PRO Mensual**")
+            if st.button("Cancelar suscripción de prueba"):
+                st.session_state.es_pro = False
+                st.rerun()
+        else:
+            st.info("Suscripción activa: **Plan Gratuito**")
+            if st.button("Activar prueba PRO"):
+                st.session_state.es_pro = True
+                st.rerun()
