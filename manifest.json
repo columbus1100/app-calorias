@@ -1,22 +1,15 @@
 {
-  "short_name": "Calorías AI",
-  "name": "Calorías AI Pro",
+  "short_name": "Streamlit",
+  "name": "Streamlit",
   "icons": [
     {
-      "src": "https://raw.githubusercontent.com/columbus1100/app-calorias/main/icon.png",
+      "src": "favicon_512.png",
       "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "https://raw.githubusercontent.com/columbus1100/app-calorias/main/icon.png",
-      "type": "image/png",
-      "sizes": "192x192",
-      "purpose": "any maskable"
+      "sizes": "512x512"
     }
   ],
   "start_url": "/",
   "display": "standalone",
-  "theme_color": "#0E1117",
-  "background_color": "#0E1117"
+  "theme_color": "#ffffff",
+  "background_color": "#ffffff"
 }
