@@ -5,17 +5,17 @@
   "display": "standalone",
   "background_color": "#0E1117",
   "theme_color": "#0083B8",
-  "description": "Calculadora e identificador inteligente de calorías y nutrientes con Inteligencia Artificial.",
+  "description": "Calculadora e identificador inteligente de calorías y nutrientes con IA.",
   "icons": [
     {
-      "src": "icon.png",
-      "sizes": "192x192",
+      "src": "https://cdn-icons-png.flaticon.com/512/2921/2921822.png",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icon.png",
-      "sizes": "512x512",
+      "src": "https://cdn-icons-png.flaticon.com/512/2921/2921822.png",
+      "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     }
